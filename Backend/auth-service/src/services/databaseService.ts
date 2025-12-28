@@ -2,8 +2,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const DATABASE_SERVICE_URL =
-  process.env.DATABASE_SERVICE_URL || "http://localhost:3001";
+const DATABASE_SERVICE_URL = process.env.DATABASE_SERVICE_URL;
 
 export type User = {
   _id?: string;
@@ -44,7 +43,7 @@ async function callDatabaseService(api: string, data: any): Promise<any> {
       throw new Error(result.message || "Database service error");
     }
 
-    return result.data;
+    return result;
   } catch (error) {
     if (error instanceof Error) {
       throw error;
