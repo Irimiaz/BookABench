@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// eslint-disable-next-line style/operator-linebreak
 const DATABASE_SERVICE_URL =
   process.env.DATABASE_SERVICE_URL || "http://localhost:3001";
 
