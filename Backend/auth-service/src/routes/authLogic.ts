@@ -4,8 +4,9 @@ import type {
   CustomRequest,
   HandlerFunctionResult,
 } from "../types/request.d.js";
-import { test } from "../handlers/test.js";
 import { AppError } from "../utils/errors.js";
+import { register } from "../handlers/register.js";
+import { login } from "../handlers/login.js";
 
 export async function handleAuthRequest(req: Request, res: Response) {
   const body = req.body as CustomRequest<any>;
@@ -22,10 +23,12 @@ export async function handleAuthRequest(req: Request, res: Response) {
     let result: HandlerFunctionResult<any>;
 
     switch (body.api) {
-      case "TEST":
-        result = await test(body.data);
+      case "LOGIN":
+        result = await login(body.data);
         break;
-
+      case "REGISTER":
+        result = await register(body.data);
+        break;
       default:
         return sendError(res, `Unknown auth request api: "${body.api}"`, 400);
     }

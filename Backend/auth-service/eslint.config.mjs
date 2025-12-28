@@ -36,6 +36,7 @@ export default antfu({
     "style/arrow-parens": "off",
     "style/brace-style": "off",
     "style/comma-dangle": "off",
+    "style/operator-linebreak": "off",
     "unicorn/filename-case": ["error", {
       case: "camelCase",
       ignore: ["README.md"],
