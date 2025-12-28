@@ -1,16 +1,17 @@
 # Auth Service
 
-A Node.js Express API with TypeScript for handling authentication and custom requests.
+A Node.js Express API with TypeScript for handling user authentication and authorization with role-based access control.
 
 ## Structure
 
 ```
 src/
-├── handlers/          # Business logic handlers (one per API action)
+├── handlers/          # Business logic handlers (register, login)
 ├── middleware/        # Express middleware (error handling, logging, async)
 ├── routes/            # Route definitions
+├── services/          # External service clients (database service)
 ├── types/             # TypeScript type definitions
-├── utils/             # Utility functions (response helpers, errors)
+├── utils/             # Utility functions (password hashing, response helpers, errors)
 ├── index.ts           # Entry point
 └── server.ts          # Express app configuration
 ```
@@ -28,6 +29,8 @@ npm install
 ```env
 PORT=3000
 NODE_ENV=development
+DATABASE_SERVICE_URL=http://localhost:3001
+ADMIN_TEACHER_ID=your_secret_teacher_id
 ```
 
 3. Start the development server:
@@ -44,17 +47,17 @@ Create a `.env` file in the root directory with the following variables:
 
 - `PORT` - Server port (default: 3000)
 - `NODE_ENV` - Environment mode: `development` or `production` (default: development)
+- `DATABASE_SERVICE_URL` - URL of the database service (default: http://localhost:3001)
+- `ADMIN_TEACHER_ID` - Secret teacher ID for admin registration (optional, can be hardcoded)
 
 Example `.env`:
 
 ```env
 PORT=3000
 NODE_ENV=development
+DATABASE_SERVICE_URL=http://localhost:3001
+ADMIN_TEACHER_ID=TEACHER_ADMIN_2024
 ```
-
-### Additional Environment Variables
-
-Any other environment variables (database credentials, API keys, secrets, etc.) should be accessed from your external configuration service or secrets management system. Do not store sensitive data in the `.env` file. Access these variables through your configuration management solution.
 
 ## API Endpoint
 
@@ -66,9 +69,15 @@ All requests go through a single endpoint:
 
 ```json
 {
-  "api": "TEST",
+  "api": "REGISTER",
   "data": {
-    "message": "Your data here"
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "securepass123",
+    "universityYear": 2,
+    "phone": "+1234567890",
+    "universityName": "Tech University",
+    "teacherID": "TEACHER_ADMIN_2024"
   }
 }
 ```
@@ -80,8 +89,18 @@ All requests go through a single endpoint:
 ```json
 {
   "success": true,
-  "message": "Success",
-  "data": { ... }
+  "message": "User registered successfully",
+  "data": {
+    "user": {
+      "_id": "user-id",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "universityYear": 2,
+      "phone": "+1234567890",
+      "universityName": "Tech University",
+      "role": "admin"
+    }
+  }
 }
 ```
 
@@ -94,13 +113,115 @@ All requests go through a single endpoint:
 }
 ```
 
-### Example Request
+## Available APIs
+
+### REGISTER
+
+Register a new user. Users can register as normal users or admins by providing a special `teacherID`.
+
+**Request:**
+
+```json
+{
+  "api": "REGISTER",
+  "data": {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "securepass123",
+    "universityYear": 2,
+    "phone": "+1234567890",
+    "universityName": "Tech University",
+    "teacherID": "TEACHER_ADMIN_2024"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "user": {
+      "_id": "user-id",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "universityYear": 2,
+      "phone": "+1234567890",
+      "universityName": "Tech University",
+      "role": "admin"
+    }
+  }
+}
+```
+
+**Note:** If `teacherID` matches the configured admin teacher ID, the user will be registered with `role: "admin"`. Otherwise, they will be registered with `role: "normal"`.
+
+### LOGIN
+
+Authenticate a user and return their information including role.
+
+**Request:**
+
+```json
+{
+  "api": "LOGIN",
+  "data": {
+    "email": "john@example.com",
+    "password": "securepass123"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "_id": "user-id",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "universityYear": 2,
+      "phone": "+1234567890",
+      "universityName": "Tech University",
+      "role": "admin"
+    }
+  }
+}
+```
+
+## Example Requests
+
+### Register as Normal User
 
 ```bash
-curl -X POST http://localhost:3000/auth \
-  -H "Content-Type: application/json" \
-  -d '{"api":"TEST","data":{"message":"Hello!"}}'
+curl -X POST http://localhost:3000/auth -H "Content-Type: application/json" -d '{"api":"REGISTER","data":{"name":"John Doe","email":"john.doe@university.edu","password":"securepass123","universityYear":2,"phone":"+1234567890","universityName":"Tech University"}}'
 ```
+
+### Register as Admin
+
+```bash
+curl -X POST http://localhost:3000/auth -H "Content-Type: application/json" -d '{"api":"REGISTER","data":{"name":"Admin User","email":"admin@university.edu","password":"adminpass123","universityYear":1,"phone":"+9876543210","universityName":"Tech University","teacherID":"TEACHER_ADMIN_2024"}}'
+```
+
+### Login
+
+```bash
+curl -X POST http://localhost:3000/auth -H "Content-Type: application/json" -d '{"api":"LOGIN","data":{"email":"john.doe@university.edu","password":"securepass123"}}'
+```
+
+## User Roles
+
+The service supports two user roles:
+
+- **normal**: Default role for regular users
+- **admin**: Admin role assigned when registering with a valid `teacherID`
+
+The role is stored in the database and returned in both registration and login responses.
 
 ## Development
 
@@ -115,43 +236,17 @@ npm run typecheck # Type check without building
 ## How It Works
 
 1. All requests go to `POST /auth`
-2. The `api` field determines which handler to execute
+2. The `api` field determines which handler to execute (REGISTER or LOGIN)
 3. Handlers are located in `src/handlers/`
-4. Each handler is async and returns `{ success: boolean, data?: any, message?: string }`
-5. The system handles multiple concurrent requests asynchronously
+4. Each handler validates input, interacts with the database service, and returns user data
+5. Passwords are hashed using bcrypt before storage
+6. The system handles multiple concurrent requests asynchronously
 
-## Adding New Handlers
+## Dependencies
 
-1. Create a new file in `src/handlers/` (e.g., `login.ts`)
-2. Export a handler function that matches the `HandlerFunction` type
-3. Add a case in `src/routes/authLogic.ts` switch statement
-
-Example handler:
-
-```typescript
-import type { HandlerFunction } from "../types/request.d.js";
-
-type LoginData = {
-  email: string;
-  password: string;
-};
-
-export const login: HandlerFunction = async (data: LoginData) => {
-  // Your logic here
-  return {
-    success: true,
-    data: { token: "abc123" },
-  };
-};
-```
-
-Then add to `authLogic.ts`:
-
-```typescript
-case "LOGIN":
-  result = await login(body.data);
-  break;
-```
+- **express**: Web framework
+- **bcryptjs**: Password hashing
+- **dotenv**: Environment variable management
 
 ## Scripts
 
