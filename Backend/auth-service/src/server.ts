@@ -1,8 +1,9 @@
 import express from "express";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/logger.js";
+import { asyncHandler } from "./middleware/asyncHandler.js";
 import healthRouter from "./routes/health.js";
-import authLogicRouter from "./routes/authLogic.js";
+import { handleAuthRequest } from "./routes/authLogic.js";
 
 const app = express();
 
@@ -21,7 +22,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/health", healthRouter);
-app.use("/auth", authLogicRouter); // Uncomment to use example routes
+app.post("/auth", asyncHandler(handleAuthRequest));
 
 // Error handling
 app.use(notFound);
