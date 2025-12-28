@@ -2,6 +2,9 @@ import type { HandlerFunctionResult } from "../types/request.d.js";
 import { createUser, getUserByEmail } from "../services/databaseService.js";
 import { hashPassword } from "../utils/password.js";
 import { ValidationError, ConflictError } from "../utils/errors.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 type RegisterData = {
   name: string;
@@ -10,6 +13,7 @@ type RegisterData = {
   universityYear: number;
   phone: string;
   universityName: string;
+  teacherID?: string;
 };
 
 type RegisterResponse = {
@@ -20,13 +24,22 @@ type RegisterResponse = {
     universityYear: number;
     phone: string;
     universityName: string;
+    role: "admin" | "normal";
   };
 };
 
 export const register = async (
   data: RegisterData
 ): Promise<HandlerFunctionResult<RegisterResponse>> => {
-  const { name, email, password, universityYear, phone, universityName } = data;
+  const {
+    name,
+    email,
+    password,
+    universityYear,
+    phone,
+    universityName,
+    teacherID,
+  } = data;
 
   // Validation
   if (
@@ -89,6 +102,14 @@ export const register = async (
     throw new ConflictError("User with this email already exists");
   }
 
+  // Determine role based on teacherID
+  let role: "admin" | "normal" = "normal";
+  if (teacherID !== undefined && teacherID === process.env.ADMINID) {
+    role = "admin";
+  } else if (teacherID !== undefined && teacherID !== process.env.ADMINID) {
+    throw new ValidationError("Teacher ID is wrong");
+  }
+
   // Hash password
   const passwordHash = await hashPassword(password);
 
@@ -100,6 +121,7 @@ export const register = async (
     universityYear,
     phone: phone.trim(),
     universityName: universityName.trim(),
+    role,
   });
 
   return {
@@ -112,6 +134,7 @@ export const register = async (
         universityYear: user.universityYear,
         phone: user.phone,
         universityName: user.universityName,
+        role: user.role,
       },
     },
     message: "User registered successfully",

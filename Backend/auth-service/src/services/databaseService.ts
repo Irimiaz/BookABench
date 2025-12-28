@@ -13,6 +13,7 @@ export type User = {
   universityYear: number;
   phone: string;
   universityName: string;
+  role: "admin" | "normal";
   createdAt?: Date;
   updatedAt?: Date;
 };

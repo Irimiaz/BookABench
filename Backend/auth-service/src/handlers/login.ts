@@ -16,6 +16,7 @@ type LoginResponse = {
     universityYear: number;
     phone: string;
     universityName: string;
+    role: "admin" | "normal";
   };
 };
 
@@ -55,6 +56,7 @@ export const login = async (
         universityYear: user.universityYear,
         phone: user.phone,
         universityName: user.universityName,
+        role: user.role,
       },
     },
     message: "Login successful",
