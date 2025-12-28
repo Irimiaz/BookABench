@@ -38,7 +38,6 @@ export async function handleBusinessRequest(req: Request, res: Response) {
         );
         break;
     }
-    console.log(result);
     if (!result.success) {
       return sendError(res, result.message || "An error occurred", 500);
     }
