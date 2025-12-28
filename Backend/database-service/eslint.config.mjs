@@ -1,0 +1,44 @@
+import antfu from "@antfu/eslint-config";
+
+export default antfu({
+  type: "app",
+  typescript: true,
+  formatters: true,
+  stylistic: {
+    indent: 2,
+    semi: true,
+    quotes: "double",
+  },
+  ignores: ["*.md"],
+}, {
+  rules: {
+    "ts/no-redeclare": "off",
+    "node/file-extension-in-import": ["error", "always"],
+    "ts/consistent-type-definitions": ["error", "type"],
+    "no-console": "off",
+    "antfu/no-top-level-await": ["off"],
+    "antfu/top-level-function": ["off"],
+    "node/prefer-global/process": ["off"],
+    "node/no-process-env": ["off"],
+    "perfectionist/sort-array-includes": ["off"],
+    "perfectionist/sort-classes": ["off"],
+    "perfectionist/sort-enums": ["off"],
+    "perfectionist/sort-exports": ["off"],
+    "perfectionist/sort-imports": ["off"],
+    "perfectionist/sort-interfaces": ["off"],
+    "perfectionist/sort-jsx-props": ["off"],
+    "perfectionist/sort-named-exports": ["off"],
+    "perfectionist/sort-named-imports": ["off"],
+    "perfectionist/sort-object-types": ["off"],
+    "perfectionist/sort-objects": ["off"],
+    "perfectionist/sort-switch-case": ["off"],
+    "perfectionist/sort-union-types": ["off"],
+    "style/arrow-parens": "off",
+    "style/brace-style": "off",
+    "style/comma-dangle": "off",
+    "unicorn/filename-case": ["error", {
+      ignore: ["README.md"],
+    }],
+    "test/prefer-lowercase-title": ["off"],
+  },
+});

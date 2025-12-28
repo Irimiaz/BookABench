@@ -1,0 +1,29 @@
+{
+  "name": "database-service",
+  "version": "1.0.0",
+  "description": "Database service API",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "node dist/src/index.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "lint": "eslint --fix src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "mongodb": "^6.3.0"
+
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^6.2.0",
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.9.2",
+    "eslint": "^9.38.0",
+    "@types/mongodb": "^4.0.7",
+    "eslint-plugin-format": "^1.0.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
