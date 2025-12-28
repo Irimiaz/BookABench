@@ -77,7 +77,7 @@ All requests go through a single endpoint:
     "universityYear": 2,
     "phone": "+1234567890",
     "universityName": "Tech University",
-    "teacherID": "TEACHER_ADMIN_2024"
+    "teacherID": "your_secret_teacher_id"
   }
 }
 ```
@@ -131,7 +131,7 @@ Register a new user. Users can register as normal users or admins by providing a
     "universityYear": 2,
     "phone": "+1234567890",
     "universityName": "Tech University",
-    "teacherID": "TEACHER_ADMIN_2024"
+    "teacherID": "your_secret_teacher_id"
   }
 }
 ```
@@ -205,7 +205,7 @@ curl -X POST http://localhost:3000/auth -H "Content-Type: application/json" -d '
 ### Register as Admin
 
 ```bash
-curl -X POST http://localhost:3000/auth -H "Content-Type: application/json" -d '{"api":"REGISTER","data":{"name":"Admin User","email":"admin@university.edu","password":"adminpass123","universityYear":1,"phone":"+9876543210","universityName":"Tech University","teacherID":"TEACHER_ADMIN_2024"}}'
+curl -X POST http://localhost:3000/auth -H "Content-Type: application/json" -d '{"api":"REGISTER","data":{"name":"Admin User","email":"admin@university.edu","password":"adminpass123","universityYear":1,"phone":"+9876543210","universityName":"Tech University","teacherID":"your_secret_teacher_id"}}'
 ```
 
 ### Login
