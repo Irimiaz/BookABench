@@ -56,7 +56,7 @@ Example `.env`:
 PORT=3000
 NODE_ENV=development
 DATABASE_SERVICE_URL=http://localhost:3001
-ADMIN_TEACHER_ID=TEACHER_ADMIN_2024
+ADMIN_TEACHER_ID=your_secret_teacher_id
 ```
 
 ## API Endpoint
