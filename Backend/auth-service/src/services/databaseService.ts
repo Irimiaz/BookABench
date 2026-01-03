@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { ConflictError } from "../utils/errors.js";
 
 dotenv.config();
 
@@ -55,6 +56,10 @@ async function callDatabaseService(api: string, data: any): Promise<any> {
 export async function createUser(
   user: Omit<User, "_id" | "createdAt" | "updatedAt">
 ): Promise<User> {
+  const existingUser = await getUserByEmail(user.email);
+  if (existingUser) {
+    throw new ConflictError("User with this email already exists");
+  }
   const userData = {
     query: {
       ...user,
@@ -66,20 +71,20 @@ export async function createUser(
   const result = await callDatabaseService("SET_DATA", userData);
   return {
     ...userData.query,
-    _id: result.insertedId || result.document?._id,
+    _id: result.data.documentId || result.data.document?._id,
   };
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
   const result = await callDatabaseService("GET_DATA", {
-    query: { email: email.toLowerCase() },
+    query: { email },
   });
 
-  if (!result || result.length === 0) {
+  if (!result.data || result.data.length === 0) {
     return null;
   }
 
-  return result[0] as User;
+  return result.data[0] as User;
 }
 
 export async function getUserById(userId: string): Promise<User | null> {
@@ -87,11 +92,11 @@ export async function getUserById(userId: string): Promise<User | null> {
     query: { _id: userId },
   });
 
-  if (!result || result.length === 0) {
+  if (!result.data || result.data.length === 0) {
     return null;
   }
 
-  return result[0] as User;
+  return result.data[0] as User;
 }
 
 export async function updateUser(

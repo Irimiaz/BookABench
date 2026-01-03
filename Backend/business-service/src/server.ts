@@ -4,8 +4,14 @@ import { requestLogger } from "./middleware/logger.js";
 import { asyncHandler } from "./middleware/asyncHandler.js";
 import healthRouter from "./routes/health.js";
 import { handleBusinessRequest } from "./routes/businessRequest.js";
+import { createServer } from "http";
+import { initializeSocketService } from "./services/socketService.js";
 
 const app = express();
+const httpServer = createServer(app);
+
+// Initialize Socket.IO
+initializeSocketService(httpServer);
 
 // Middleware
 app.use(express.json());
@@ -27,4 +33,4 @@ app.post("/business", asyncHandler(handleBusinessRequest));
 app.use(notFound);
 app.use(errorHandler);
 
-export default app;
+export default httpServer;

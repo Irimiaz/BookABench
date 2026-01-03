@@ -47,6 +47,7 @@ The server will start on `http://localhost:3002` (or the port specified in `.env
 - `NODE_ENV` - Environment mode: `development` or `production` (default: development)
 - `AUTH_SERVICE_URL` - URL of the auth service (required)
 - `DATABASE_SERVICE_URL` - URL of the database service (required)
+- `SOCKET_CORS_ORIGINS` - Comma-separated list of allowed origins for Socket.IO (optional, defaults to `*` in development)
 
 ## API Endpoint
 
@@ -484,6 +485,71 @@ curl -X POST http://localhost:3002/business -H "Content-Type: application/json" 
 ```bash
 curl -X POST http://localhost:3002/business -H "Content-Type: application/json" -d "{\"api\":\"DELETE_DATA\",\"service\":\"database\",\"data\":{\"collection\":\"users\",\"params\":{\"query\":{\"_id\":\"user-id\"}}}}"
 ```
+
+## Socket.IO Real-Time Updates
+
+The business service includes Socket.IO for real-time database change notifications. After a user logs in, they can connect to the socket and subscribe to database changes.
+
+### Client Connection (React Native/Web)
+
+```javascript
+import { io } from "socket.io-client";
+
+// Connect to business service
+const socket = io("http://your-server:3002", {
+  transports: ["websocket"],
+});
+
+// After login, subscribe to collections
+socket.on("connect", () => {
+  socket.emit("subscribe", {
+    userId: "user-id-from-login",
+    collections: ["users", "messages"], // or [] for all collections
+  });
+});
+
+// Listen for database changes
+socket.on("database_change", (message) => {
+  // message structure:
+  // {
+  //   type: "database_change",
+  //   timestamp: "2024-01-01T00:00:00.000Z",
+  //   operation: "SET_DATA" | "UPDATE_DATA" | "DELETE_DATA",
+  //   collection: "users",
+  //   documentId: "document-id",
+  //   data: { ... } // the document
+  // }
+});
+```
+
+### Socket Events
+
+**Client → Server:**
+
+- `subscribe` - Subscribe to database changes
+  ```javascript
+  socket.emit("subscribe", {
+    userId: "user-id",
+    collections: ["users"], // or [] for all
+  });
+  ```
+- `update_subscription` - Update subscription preferences
+  ```javascript
+  socket.emit("update_subscription", {
+    collections: ["users", "messages"],
+    filters: { users: { role: "admin" } },
+  });
+  ```
+
+**Server → Client:**
+
+- `subscribed` - Confirmation of subscription
+- `subscription_updated` - Confirmation of subscription update
+- `database_change` - Real-time database change notification
+
+### Automatic Notifications
+
+Database changes from `SET_DATA`, `UPDATE_DATA`, and `DELETE_DATA` operations are automatically broadcast to subscribed clients. No additional configuration needed.
 
 ## Available APIs
 

@@ -19,42 +19,34 @@ export const setData: HandlerFunction<CustomRequestData> = async (
   try {
     const collectionInstance = new BaseCollection(collection);
     const query = params?.query || {};
-    const update = params?.update || {};
 
-    // If update exists, update existing document
-    if (Object.keys(update).length > 0) {
-      const existing = await collectionInstance.findOne(query);
-      if (!existing) {
-        throw new ValidationError("No matching record found to update");
-      }
-      const result = await collectionInstance.updateOne(query, update);
-      return {
-        success: true,
-        data: result,
-        message: "Document updated successfully",
-      };
-    } else {
-      // Insert new document
-      // Generate string _id if not provided
-      const documentToInsert = { ...query };
-      if (!documentToInsert._id) {
-        documentToInsert._id = randomUUID();
-      }
-
-      const result = await collectionInstance.insertOne(documentToInsert);
-
-      return {
-        success: true,
-        data: {
-          insertedId:
-            typeof documentToInsert._id === "string"
-              ? documentToInsert._id
-              : documentToInsert._id.toString(),
-          document: documentToInsert,
-        },
-        message: "Document inserted successfully",
-      };
+    // Insert new document
+    // Generate string _id if not provided
+    const documentToInsert = { ...query };
+    if (!documentToInsert._id) {
+      documentToInsert._id = randomUUID();
     }
+    const existing = await collectionInstance.findOne({
+      _id: documentToInsert._id,
+    });
+    if (existing) {
+      throw new ValidationError(
+        `Document with _id "${documentToInsert._id}" already exists`
+      );
+    }
+    const result = await collectionInstance.insertOne(documentToInsert);
+
+    return {
+      success: true,
+      data: {
+        document: documentToInsert,
+        documentId:
+          typeof documentToInsert._id === "string"
+            ? documentToInsert._id
+            : documentToInsert._id.toString(),
+      },
+      message: "Document inserted successfully",
+    };
   } catch (error) {
     if (error instanceof ValidationError) {
       throw error;

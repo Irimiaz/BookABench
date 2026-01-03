@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { getSocketService } from "./socketService";
 
 dotenv.config();
 
@@ -9,7 +10,7 @@ if (!DATABASE_SERVICE_URL) {
 }
 
 export async function callDatabaseService(
-  api: string,
+  api: "GET_DATA" | "SET_DATA" | "UPDATE_DATA" | "DELETE_DATA",
   collection: string,
   data: any
 ): Promise<any> {
@@ -34,11 +35,37 @@ export async function callDatabaseService(
       throw new Error(result.message || "Database service error");
     }
 
+    if (api === "SET_DATA" || api === "UPDATE_DATA" || api === "DELETE_DATA") {
+      notifyDatabaseChange(api, collection, result);
+    }
     return result;
   } catch (error) {
     if (error instanceof Error) {
       throw error;
     }
     throw new Error("Failed to communicate with database service");
+  }
+}
+
+function notifyDatabaseChange(
+  api: "SET_DATA" | "UPDATE_DATA" | "DELETE_DATA",
+  collection: string,
+  responseData: any
+) {
+  try {
+    const socketService = getSocketService();
+
+    socketService.notifyDatabaseChange({
+      operation: api,
+      collection,
+      documentId: String(
+        responseData.documentId || responseData.document?._id || "unknown"
+      ),
+      document: responseData.document || undefined,
+    });
+  } catch (error) {
+    // Silently fail if socket service is not available
+    // This prevents breaking the main flow if sockets aren't initialized
+    console.error("Failed to notify socket service:", error);
   }
 }

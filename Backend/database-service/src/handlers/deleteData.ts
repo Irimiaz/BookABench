@@ -21,6 +21,14 @@ export const deleteData: HandlerFunction<CustomRequestData> = async (
 
   try {
     const collectionInstance = new BaseCollection(collection);
+
+    // Fetch the document before deleting it
+    const documentToDelete = await collectionInstance.findOne(params.query);
+
+    if (!documentToDelete) {
+      throw new NotFoundError("No matching record found to delete");
+    }
+
     const result = await collectionInstance.deleteOne(params.query);
 
     if (result.deletedCount === 0) {
@@ -30,7 +38,8 @@ export const deleteData: HandlerFunction<CustomRequestData> = async (
     return {
       success: true,
       data: {
-        deletedCount: result.deletedCount,
+        document: documentToDelete,
+        documentId: documentToDelete._id?.toString() || documentToDelete._id,
       },
       message: `Deleted ${result.deletedCount} document(s) successfully`,
     };

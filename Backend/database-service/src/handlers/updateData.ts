@@ -36,9 +36,15 @@ export const updateData: HandlerFunction<CustomRequestData> = async (
       params.update
     );
 
+    // Fetch the updated document
+    const updatedDocument = await collectionInstance.findOne(params.query);
+
     return {
       success: true,
-      data: result,
+      data: {
+        document: updatedDocument,
+        documentId: existing._id?.toString() || existing._id,
+      },
       message: "Document updated successfully",
     };
   } catch (error) {

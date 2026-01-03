@@ -37,7 +37,7 @@ export const login = async (
   // Find user
   const user = await getUserByEmail(email);
   if (!user) {
-    throw new UnauthorizedError("Invalid email or password");
+    throw new UnauthorizedError("The user does not exist");
   }
 
   // Verify password

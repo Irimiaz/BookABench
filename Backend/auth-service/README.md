@@ -47,17 +47,32 @@ Create a `.env` file in the root directory with the following variables:
 
 - `PORT` - Server port (default: 3000)
 - `NODE_ENV` - Environment mode: `development` or `production` (default: development)
-- `DATABASE_SERVICE_URL` - URL of the database service (default: http://localhost:3001)
-- `ADMIN_TEACHER_ID` - Secret teacher ID for admin registration (optional, can be hardcoded)
+- `DATABASE_SERVICE_URL` - URL of the database service (required)
+- `ADMINID` - Secret teacher ID for admin registration (optional, can be set in environment)
 
-Example `.env`:
+**Development `.env`:**
 
 ```env
 PORT=3000
 NODE_ENV=development
 DATABASE_SERVICE_URL=http://localhost:3001
-ADMIN_TEACHER_ID=your_secret_teacher_id
+ADMINID=your_secret_teacher_id
 ```
+
+**Production `.env` (Portainer):**
+
+```env
+PORT=3000
+NODE_ENV=production
+DATABASE_SERVICE_URL=http://database-service:3001
+ADMINID=your_secret_teacher_id
+```
+
+**Note for Portainer Deployment:**
+
+- Use Docker service names (e.g., `database-service`) for internal service URLs
+- Ensure all services are on the same Docker network
+- The server binds to `0.0.0.0` to accept connections from outside the container
 
 ## API Endpoint
 
