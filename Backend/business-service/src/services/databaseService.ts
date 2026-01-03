@@ -54,14 +54,11 @@ function notifyDatabaseChange(
 ) {
   try {
     const socketService = getSocketService();
-
     socketService.notifyDatabaseChange({
       operation: api,
       collection,
-      documentId: String(
-        responseData.documentId || responseData.document?._id || "unknown"
-      ),
-      document: responseData.document || undefined,
+      documentId: responseData.data.document._id || "NOT_FOUND",
+      document: responseData.data.document || { _id: "NOT_FOUND" },
     });
   } catch (error) {
     // Silently fail if socket service is not available

@@ -1,0 +1,14 @@
+/* eslint-disable */
+import * as Router from 'expo-router';
+
+export * from 'expo-router';
+
+declare module 'expo-router' {
+  export namespace ExpoRouter {
+    export interface __routes<T extends string | object = string> {
+      hrefInputParams: { pathname: Router.RelativePathString, params?: Router.UnknownInputParams } | { pathname: Router.ExternalPathString, params?: Router.UnknownInputParams } | { pathname: `/`; params?: Router.UnknownInputParams; } | { pathname: `/_sitemap`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/Dashboard`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/ExampleScreen`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/Products`; params?: Router.UnknownInputParams; } | { pathname: `/navigation/MainStack`; params?: Router.UnknownInputParams; } | { pathname: `/navigation/Stacks`; params?: Router.UnknownInputParams; };
+      hrefOutputParams: { pathname: Router.RelativePathString, params?: Router.UnknownOutputParams } | { pathname: Router.ExternalPathString, params?: Router.UnknownOutputParams } | { pathname: `/`; params?: Router.UnknownOutputParams; } | { pathname: `/_sitemap`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/Dashboard`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/ExampleScreen`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/Products`; params?: Router.UnknownOutputParams; } | { pathname: `/navigation/MainStack`; params?: Router.UnknownOutputParams; } | { pathname: `/navigation/Stacks`; params?: Router.UnknownOutputParams; };
+      href: Router.RelativePathString | Router.ExternalPathString | `/${`?${string}` | `#${string}` | ''}` | `/_sitemap${`?${string}` | `#${string}` | ''}` | `/dashboard/Dashboard${`?${string}` | `#${string}` | ''}` | `/dashboard/ExampleScreen${`?${string}` | `#${string}` | ''}` | `/dashboard/Products${`?${string}` | `#${string}` | ''}` | `/navigation/MainStack${`?${string}` | `#${string}` | ''}` | `/navigation/Stacks${`?${string}` | `#${string}` | ''}` | { pathname: Router.RelativePathString, params?: Router.UnknownInputParams } | { pathname: Router.ExternalPathString, params?: Router.UnknownInputParams } | { pathname: `/`; params?: Router.UnknownInputParams; } | { pathname: `/_sitemap`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/Dashboard`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/ExampleScreen`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/Products`; params?: Router.UnknownInputParams; } | { pathname: `/navigation/MainStack`; params?: Router.UnknownInputParams; } | { pathname: `/navigation/Stacks`; params?: Router.UnknownInputParams; };
+    }
+  }
+}

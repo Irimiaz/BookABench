@@ -6,12 +6,24 @@ import healthRouter from "./routes/health.js";
 import { handleBusinessRequest } from "./routes/businessRequest.js";
 import { createServer } from "http";
 import { initializeSocketService } from "./services/socketService.js";
+import dotenv from "dotenv";
+import cors from "cors";
 
+dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
 // Initialize Socket.IO
 initializeSocketService(httpServer);
+
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Middleware
 app.use(express.json());

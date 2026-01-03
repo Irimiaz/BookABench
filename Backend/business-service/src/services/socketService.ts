@@ -31,7 +31,7 @@ class SocketService {
 
   private setupEventHandlers() {
     this.io.on("connection", (socket: Socket) => {
-      console.log(`Client connected: ${socket.id}`);
+      console.log(`[Socket] Client connected: ${socket.id}`);
 
       // User subscribes after login
       socket.on(
@@ -53,7 +53,7 @@ class SocketService {
           });
 
           console.log(
-            `User ${userId} subscribed to collections:`,
+            `[Socket] User ${userId} subscribed to collections:`,
             collections.length > 0 ? collections : "all"
           );
         }
@@ -76,7 +76,7 @@ class SocketService {
         const subscription = this.socketUsers.get(socket.id);
         if (subscription) {
           this.userSockets.delete(subscription.userId);
-          console.log(`User ${subscription.userId} disconnected`);
+          console.log(`[Socket] User ${subscription.userId} disconnected`);
         }
         this.socketUsers.delete(socket.id);
       });
