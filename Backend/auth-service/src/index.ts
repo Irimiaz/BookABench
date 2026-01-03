@@ -8,8 +8,8 @@ const port = Number(process.env.PORT) || 3000;
 function startServer() {
   try {
     server.listen(port, () => {
-      console.log(`🚀 Server running on http://localhost:${port}`);
-      console.log(`📊 Health check: http://localhost:${port}/health`);
+      console.log(`🚀 Server running on ${port}`);
+      console.log(`📊 Health check: ${port}/health`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
     });
   } catch (error) {
