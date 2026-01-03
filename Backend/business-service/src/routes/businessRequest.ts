@@ -32,7 +32,7 @@ export async function handleBusinessRequest(req: Request, res: Response) {
         break;
       case "database":
         result = await callDatabaseService(
-          body.api,
+          body.api as "SET_DATA" | "UPDATE_DATA" | "DELETE_DATA" | "GET_DATA",
           body.data.collection,
           body.data.params
         );
