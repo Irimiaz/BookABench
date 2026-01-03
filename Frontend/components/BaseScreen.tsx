@@ -24,7 +24,7 @@ const BaseScreen: React.FC<BaseScreenProps> = ({
   return (
     <View style={styles.container}>
       {/* 2) Foreground content */}
-      <View style={tw`flex-1 px-4 mt-3 bg-transparent`}>
+      <View style={tw`flex-1 px-4 mt-3 bg-white`}>
         {(onBack || onClose) && (
           <Header onBack={onBack} onClose={onClose} goToProfile={goToProfile} />
         )}
