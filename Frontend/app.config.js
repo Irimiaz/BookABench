@@ -2,8 +2,8 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: "Itinerary-Planner",
-    slug: "Itinerary-Planner",
+    name: "BookABench",
+    slug: "BookABench",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
