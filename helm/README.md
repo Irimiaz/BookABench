@@ -1,4 +1,4 @@
-# BookABench — Helm Chart for Kubernetes (kind + NodePorts + MongoDB PVC)
+# BookABench — Helm Chart
 
 Helm chart to deploy **BookABench backend** locally in Kubernetes using **kind**.
 
@@ -9,9 +9,7 @@ Helm chart to deploy **BookABench backend** locally in Kubernetes using **kind**
 
 ## Prerequisites
 
-- Docker Desktop (Windows)
-- kubectl, kind, Helm v3.x
-- Git Bash or PowerShell
+Docker Desktop, kubectl, kind, Helm v3.x
 
 ---
 
@@ -19,7 +17,7 @@ Helm chart to deploy **BookABench backend** locally in Kubernetes using **kind**
 
 ### 1) Create kind cluster
 
-Create `kind-nodeports.yaml` in repo root.
+Create `kind-nodeports.yaml` in repo root, then:
 
 ```bash
 kind delete cluster --name bookabench
@@ -41,19 +39,14 @@ kind load docker-image bookabench-database:dev --name bookabench
 ### 3) Install Helm chart
 
 ```bash
-helm upgrade --install bookabench bookabench/ -n bookabench --create-namespace
-```
-
-### 4) Check status
-
-```bash
-kubectl -n bookabench get pods,svc
-helm status bookabench -n bookabench
+helm upgrade --install bookabench ./helm/bookabench -n bookabench --create-namespace
 ```
 
 ---
 
-## Access Services
+## Connectivity
+
+### Backend Services (NodePort)
 
 - **Auth:** http://localhost:32000
 - **Database:** http://localhost:32001
@@ -61,9 +54,7 @@ helm status bookabench -n bookabench
 
 **Frontend:** `BACKEND_URL=http://localhost:32002`
 
----
-
-## MongoDB Compass
+### MongoDB Compass (Desktop App)
 
 ```bash
 kubectl -n bookabench port-forward svc/mongodb 27017:27017
@@ -71,84 +62,85 @@ kubectl -n bookabench port-forward svc/mongodb 27017:27017
 
 Connection: `mongodb://root:rootpass123@localhost:27017/?authSource=admin`
 
----
+### Mongo Express (Web UI)
 
-## Portainer (Kubernetes UI)
+- **URL:** http://localhost:32018
+- **Username:** admin
+- **Password:** admin
+
+### Portainer, Grafana & Metrics Server
+
+Install all tools:
+```bash
+./helm/setup-tools.sh
+```
+
+### Portainer (Kubernetes UI)
 
 ```bash
-helm repo add portainer https://portainer.github.io/k8s/
-helm repo update
-kubectl create namespace portainer
-helm upgrade --install portainer portainer/portainer -n portainer
 kubectl -n portainer port-forward svc/portainer 9443:9443
 ```
 
 Open: https://localhost:9443
 
+### Grafana (Monitoring)
+
+```bash
+kubectl -n monitoring port-forward svc/kps-grafana 3000:80
+```
+
+Open: http://localhost:3000  
+Username: admin  
+Password: `kubectl -n monitoring get secret kps-grafana -o jsonpath='{.data.admin-password}' | base64 -d; echo`
+
+### Metrics Server
+
+```bash
+kubectl top nodes
+kubectl top pods -n bookabench
+```
+
 ---
 
-## Upgrade
+## Management
 
+**Upgrade:**
 ```bash
 helm upgrade bookabench ./helm/bookabench -n bookabench
 ```
 
-With custom values:
-
-```bash
-helm upgrade bookabench ./helm/bookabench -n bookabench --set authService.tag=latest
-```
-
----
-
-## Uninstall
-
+**Uninstall:**
 ```bash
 helm uninstall bookabench -n bookabench
 kubectl delete namespace bookabench
 ```
 
-**Note:** MongoDB PVC persists. Delete manually: `kubectl -n bookabench delete pvc data-mongodb-0`
-
----
-
-## Cleanup
-
+**Cleanup:**
 ```bash
 helm uninstall bookabench -n bookabench
 kubectl delete namespace bookabench
 kind delete cluster --name bookabench
 ```
 
----
-
-## Configuration
-
-Edit `helm/bookabench/values.yaml` to customize:
-- Image tags, replicas, ports
-- MongoDB storage size
-- Environment variables
-
-Then upgrade: `helm upgrade bookabench ./helm/bookabench -n bookabench`
+**Note:** MongoDB PVC persists. Delete manually: `kubectl -n bookabench delete pvc data-mongodb-0`
 
 ---
 
 ## Troubleshooting
 
-**Pods not starting:**
 ```bash
-kubectl -n bookabench describe pod <pod-name>
+# Check status
+kubectl -n bookabench get pods,svc
+
+# View logs
 kubectl -n bookabench logs deploy/<service-name>
+
+# Describe pod
+kubectl -n bookabench describe pod <pod-name>
 ```
 
-**Services not accessible:**
-```bash
-kubectl -n bookabench get svc,endpoints
-docker ps | grep kind
-```
+---
 
-**Helm template errors:**
-```bash
-helm template ./helm/bookabench
-helm install bookabench ./helm/bookabench -n bookabench --create-namespace --dry-run --debug
-```
+## Configuration
+
+Edit `helm/bookabench/values.yaml` to customize image tags, replicas, ports, MongoDB storage, and environment variables.
