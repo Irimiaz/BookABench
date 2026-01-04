@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -17,11 +17,8 @@ import {
   setData,
   modifyData,
   deleteData,
-  onDatabaseChange,
-  type DatabaseChangeMessage,
 } from "../../utils/exportHelpers";
 import { useAuth } from "../../contexts/AuthContext";
-import { createMessage } from "../../utils/messageHelpers";
 import tw from "twrnc";
 
 // ==================== TYPES ====================
@@ -109,14 +106,56 @@ export default function Reservations() {
   const [selectedStartTime, setSelectedStartTime] = useState(new Date());
   const [selectedEndTime, setSelectedEndTime] = useState(new Date());
 
+  // ==================== UTILITY FUNCTIONS ====================
+
+  const formatDateString = (d: Date): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatTimeString = (d: Date): string => {
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
+
+  const parseDate = (dateStr: string): Date => {
+    if (!dateStr) return new Date();
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const parseTime = (timeStr: string, baseDate: Date): Date => {
+    if (!timeStr) return new Date();
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    const d = new Date(baseDate);
+    d.setHours(hours, minutes, 0, 0);
+    return d;
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   // ==================== DATA FETCHING ====================
 
   const fetchBenches = useCallback(async () => {
     try {
       const data = await getData<Bench>("benches", {});
       setBenches(data || []);
-    } catch (error: any) {
-      console.error("Failed to fetch benches:", error);
+    } catch (e: any) {
+      console.error("Failed to fetch benches:", e);
     }
   }, []);
 
@@ -126,26 +165,22 @@ export default function Reservations() {
         status: "active",
       });
 
-      // Enrich with user information
-      const userIds = [
-        ...new Set(allReservationsData.map((res) => res.userId)),
-      ];
+      const userIds = [...new Set(allReservationsData.map((r) => r.userId))];
+
       const usersData = await Promise.all(
         userIds.map(async (userId) => {
           try {
             const users = await getData<any>("users", { _id: userId });
-            return users.length > 0 ? users[0] : null;
+            return users?.[0] ?? null;
           } catch {
             return null;
           }
         })
       );
 
-      const userMap = new Map();
-      userIds.forEach((userId, index) => {
-        if (usersData[index]) {
-          userMap.set(userId, usersData[index]);
-        }
+      const userMap = new Map<string, any>();
+      userIds.forEach((userId, idx) => {
+        if (usersData[idx]) userMap.set(userId, usersData[idx]);
       });
 
       const enriched = allReservationsData.map((res) => {
@@ -158,45 +193,38 @@ export default function Reservations() {
       });
 
       setAllReservations(enriched || []);
-    } catch (error: any) {
-      console.error("Failed to fetch all reservations:", error);
+    } catch (e: any) {
+      console.error("Failed to fetch all reservations:", e);
     }
   }, []);
 
   const fetchReservations = useCallback(async () => {
-    console.log("[fetchReservations] Starting to fetch reservations");
     setError("");
     try {
       const query =
         user?.role === "admin" ? {} : user?._id ? { userId: user._id } : {};
-      console.log("[fetchReservations] Query:", query);
-      const data = await getData<Reservation>("reservations", query);
-      console.log(
-        "[fetchReservations] Raw data received:",
-        data.length,
-        "reservations"
-      );
 
-      let enriched = data;
+      const data = await getData<Reservation>("reservations", query);
+
+      let enriched: Reservation[] = data;
+
       if (user?.role === "admin") {
-        // Get unique user IDs
-        const userIds = [...new Set(data.map((res) => res.userId))];
+        const userIds = [...new Set(data.map((r) => r.userId))];
+
         const usersData = await Promise.all(
           userIds.map(async (userId) => {
             try {
               const users = await getData<any>("users", { _id: userId });
-              return users.length > 0 ? users[0] : null;
+              return users?.[0] ?? null;
             } catch {
               return null;
             }
           })
         );
 
-        const userMap = new Map();
-        userIds.forEach((userId, index) => {
-          if (usersData[index]) {
-            userMap.set(userId, usersData[index]);
-          }
+        const userMap = new Map<string, any>();
+        userIds.forEach((userId, idx) => {
+          if (usersData[idx]) userMap.set(userId, usersData[idx]);
         });
 
         enriched = data.map((res) => {
@@ -221,336 +249,202 @@ export default function Reservations() {
         });
       }
 
-      console.log(
-        "[fetchReservations] Enriched data:",
-        enriched.length,
-        "reservations"
-      );
       setReservations(enriched || []);
-      console.log("[fetchReservations] Reservations state updated");
-    } catch (error: any) {
-      console.error("[fetchReservations] Error:", error);
-      setError(error.message || "Failed to fetch reservations");
+    } catch (e: any) {
+      console.error("[fetchReservations] Error:", e);
+      setError(e?.message || "Failed to fetch reservations");
     }
   }, [user?.role, user?._id, benches]);
 
-  // ==================== MESSAGE HELPERS ====================
+  // ==================== SIMPLE, RELIABLE MESSAGING ====================
 
-  const notifyBenchOwner = async (
-    reservationId: string,
-    benchId: string,
-    reservingUserId: string,
-    reservingUserName: string,
-    date: string,
-    startTime: string,
-    endTime: string
-  ) => {
-    try {
-      // Try to get bench from state first (more efficient)
-      let bench = benches.find((b) => b._id === benchId);
+  /**
+   * Create a message ONCE (best-effort idempotency):
+   * 1) Check if message with _id exists
+   * 2) If not, insert it
+   * 3) If server throws "duplicate", ignore
+   */
+  const createMessageOnce = useCallback(
+    async (
+      messageId: string,
+      payload: { userId: string; title: string; content: string }
+    ) => {
+      // quick sanity
+      if (!payload.userId) return;
 
-      // If not in state, fetch it
-      if (!bench) {
-        console.log(
-          "[notifyBenchOwner] Bench not in state, fetching:",
-          benchId
-        );
-        const benchesData = await getData<Bench>("benches", { _id: benchId });
-        bench = benchesData.length > 0 ? benchesData[0] : null;
-      }
+      try {
+        const existing = await getData<any>("messages", { _id: messageId });
+        if (existing && existing.length > 0) return;
 
-      console.log("[notifyBenchOwner] Bench data:", {
-        benchId,
-        bench: bench
-          ? { _id: bench._id, name: bench.name, adminId: bench.adminId }
-          : null,
-        hasAdminId: !!bench?.adminId,
-        adminId: bench?.adminId,
-        reservingUserId,
-      });
-
-      if (!bench) {
-        console.warn("[notifyBenchOwner] Bench not found:", benchId);
-        return;
-      }
-
-      if (!bench.adminId) {
-        console.warn("[notifyBenchOwner] Bench has no adminId:", {
-          benchId,
-          benchName: bench.name,
-          bench: bench,
+        await setData("messages", {
+          _id: messageId,
+          userId: payload.userId,
+          title: payload.title,
+          content: payload.content,
+          createdAt: new Date().toISOString(),
+          read: false,
         });
-        return;
+      } catch (e: any) {
+        const msg = String(e?.message ?? "");
+        if (/duplicate|already exists|conflict|409|exists/i.test(msg)) return;
+        throw e;
       }
+    },
+    []
+  );
 
-      if (bench.adminId === reservingUserId) {
-        console.log(
-          "[notifyBenchOwner] Admin is reserving their own bench, skipping notification"
-        );
-        return;
-      }
+  const notifyBenchOwner = useCallback(
+    async (
+      reservationKey: string, // can be reservationId or fallback key
+      benchId: string,
+      reservingUserId: string,
+      reservingUserName: string,
+      d: string,
+      s: string,
+      e: string
+    ) => {
+      try {
+        let bench = benches.find((b) => b._id === benchId);
 
-      const formattedDate = formatDate(date);
-      console.log(
-        "[notifyBenchOwner] Creating message for adminId:",
-        bench.adminId
-      );
-
-      const messageResult = await createMessage({
-        userId: bench.adminId,
-        title: "New Reservation on Your Bench",
-        content: `${reservingUserName} has reserved "${bench.name}" on ${formattedDate} from ${startTime} to ${endTime}.`,
-      });
-
-      console.log(
-        "[notifyBenchOwner] Message created successfully, result:",
-        messageResult
-      );
-
-      // Mark as processed
-    } catch (error) {
-      console.error("[notifyBenchOwner] Failed to notify bench owner:", error);
-      if (error instanceof Error) {
-        console.error("[notifyBenchOwner] Error details:", {
-          message: error.message,
-          stack: error.stack,
-        });
-      }
-      // Don't mark as processed if there was an error, so we can retry
-    }
-  };
-
-  const notifyUsersOfBenchDeletion = async (
-    benchId: string,
-    benchData?: any
-  ) => {
-    // Prevent duplicate notifications
-
-    try {
-      // Get bench info from parameter or fetch it BEFORE deletion
-      let bench = benchData;
-      if (!bench) {
-        // Try to get from current benches state first
-        bench = benches.find((b) => b._id === benchId);
-        // If not found, try to fetch (though it might already be deleted)
         if (!bench) {
-          try {
-            const benchesData = await getData<Bench>("benches", {
-              _id: benchId,
-            });
-            bench = benchesData.length > 0 ? benchesData[0] : null;
-          } catch {
-            // Bench already deleted, use a fallback name
-            bench = { _id: benchId, name: "the bench" } as Bench;
-          }
-        }
-      }
-
-      const benchName = bench?.name || "the bench";
-
-      // Get all active reservations for this bench BEFORE deleting them
-      const affectedReservations = await getData<Reservation>("reservations", {
-        benchId,
-        status: "active",
-      });
-
-      // Notify users and delete reservations
-      for (const reservation of affectedReservations) {
-        try {
-          // Notify the user FIRST (before deleting reservation)
-          if (reservation.userId) {
-            const formattedDate = formatDate(reservation.date);
-            await createMessage({
-              userId: reservation.userId,
-              title: "Bench Deleted - Reservation Cancelled",
-              content: `The bench "${benchName}" has been deleted. Your reservation on ${formattedDate} from ${reservation.startTime} to ${reservation.endTime} has been cancelled.`,
-            });
-          }
-
-          // Then delete the reservation
-          await deleteData("reservations", { _id: reservation._id });
-        } catch (error) {
-          console.error(
-            `Failed to process reservation ${reservation._id}:`,
-            error
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Failed to notify users of bench deletion:", error);
-    }
-  };
-
-  // ==================== REAL-TIME LISTENERS ====================
-
-  useEffect(() => {
-    if (!user?._id) return;
-
-    const cleanup = onDatabaseChange(async (message: DatabaseChangeMessage) => {
-      console.log("[onDatabaseChange] Received message:", {
-        collection: message.collection,
-        operation: message.operation,
-        documentId: message.documentId,
-      });
-
-      // Handle reservations changes
-      if (message.collection === "reservations") {
-        const reservationData = message.data;
-        console.log("[onDatabaseChange] Reservation data:", reservationData);
-
-        // New reservation created - notify bench owner if it's not their own reservation
-        if (message.operation === "SET_DATA" && reservationData) {
-          const reservationId = message.documentId;
-          console.log(
-            "[onDatabaseChange] New reservation created:",
-            reservationId
-          );
-
-          // Early check for duplicate - before any async operations
-          const notificationKey = `reservation_${reservationId}`;
-
-          // Check if we have all required data
-          if (
-            reservationId &&
-            reservationData.userId &&
-            reservationData.benchId
-          ) {
-            console.log(
-              "[onDatabaseChange] Processing notification for reservation:",
-              {
-                reservationId,
-                userId: reservationData.userId,
-                benchId: reservationData.benchId,
-              }
-            );
-
-            // Get user info for the person making the reservation
-            try {
-              const users = await getData<any>("users", {
-                _id: reservationData.userId,
-              });
-              const reservingUser = users.length > 0 ? users[0] : null;
-              const reservingUserName = reservingUser?.name || "Someone";
-              console.log(
-                "[onDatabaseChange] Reserving user:",
-                reservingUserName
-              );
-
-              // Notify the bench owner (not the person making the reservation)
-              console.log("[onDatabaseChange] Calling notifyBenchOwner");
-              await notifyBenchOwner(
-                reservationId,
-                reservationData.benchId,
-                reservationData.userId,
-                reservingUserName,
-                reservationData.date,
-                reservationData.startTime,
-                reservationData.endTime
-              );
-              console.log("[onDatabaseChange] notifyBenchOwner completed");
-            } catch (error) {
-              console.error(
-                "[onDatabaseChange] Failed to process new reservation notification:",
-                error
-              );
-            }
-          } else {
-            console.warn("[onDatabaseChange] Missing required data:", {
-              reservationId,
-              userId: reservationData?.userId,
-              benchId: reservationData?.benchId,
-            });
-          }
+          const benchesData = await getData<Bench>("benches", { _id: benchId });
+          bench = benchesData?.[0] ?? null;
         }
 
-        // Only refresh if we didn't skip due to duplicate
-        fetchReservations();
-        fetchAllReservations();
+        if (!bench?.adminId) return;
+        if (bench.adminId === reservingUserId) return;
+
+        const messageId = `msg_new_reservation_${reservationKey}`;
+        await createMessageOnce(messageId, {
+          userId: bench.adminId,
+          title: "New Reservation on Your Bench",
+          content: `${reservingUserName} has reserved "${
+            bench.name
+          }" on ${formatDate(d)} from ${s} to ${e}.`,
+        });
+      } catch (err) {
+        console.error("[notifyBenchOwner] Failed:", err);
       }
-
-      // Handle benches changes
-      if (message.collection === "benches") {
-        // Bench deleted - notify all users with reservations and delete their reservations
-        if (message.operation === "DELETE_DATA") {
-          const benchId = message.documentId;
-
-          // Get bench data from current state before it's removed, or from message data
-          const benchFromState = benches.find((b) => b._id === benchId);
-          const benchData = benchFromState || message.data;
-
-          // Notify users and delete their reservations
-          await notifyUsersOfBenchDeletion(benchId, benchData);
-        }
-
-        // Refresh benches and reservations after bench changes
-        fetchBenches();
-        fetchReservations();
-        fetchAllReservations();
-      }
-    });
-
-    return cleanup;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?._id, benches]);
+    },
+    [benches, createMessageOnce]
+  );
 
   // ==================== INITIALIZATION ====================
 
-  // Fetch benches on mount/focus
   useFocusEffect(
     useCallback(() => {
       fetchBenches();
     }, [fetchBenches])
   );
 
-  // Fetch reservations when benches are loaded and user is available
   useEffect(() => {
     if (benches.length > 0 && user?._id) {
       fetchReservations();
       fetchAllReservations();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [benches.length, user?._id]); // Only depend on benches.length and user._id to prevent loops
+  }, [benches.length, user?._id]);
+
+  // ==================== AVAILABILITY HELPERS ====================
+
+  const getBenchOccupancyForDate = (benchId: string, d: string) => {
+    return allReservations
+      .filter(
+        (r) => r.benchId === benchId && r.date === d && r.status === "active"
+      )
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  };
+
+  const getDisabledTimeRanges = () => {
+    if (!selectedBenchId || !date) return [];
+    return allReservations.filter(
+      (r) =>
+        r.benchId === selectedBenchId &&
+        r.date === date &&
+        r.status === "active" &&
+        (!editingId || r._id !== editingId)
+    );
+  };
+
+  const isStartTimeBlocked = (t: string) => {
+    return getDisabledTimeRanges().some(
+      (r) => t >= r.startTime && t < r.endTime
+    );
+  };
+
+  const isEndTimeBlocked = (t: string) => {
+    return getDisabledTimeRanges().some(
+      (r) => t > r.startTime && t <= r.endTime
+    );
+  };
+
+  // ==================== FORM PICKERS ====================
+
+  const onDateChange = (event: any, newDate?: Date) => {
+    const currentDate = newDate || selectedDate;
+    setShowDatePicker(Platform.OS === "ios");
+    if (event.type === "set" && currentDate) {
+      setSelectedDate(currentDate);
+      setDate(formatDateString(currentDate));
+    }
+  };
+
+  const onStartTimeChange = (event: any, selectedTime?: Date) => {
+    const currentTime = selectedTime || selectedStartTime;
+    setShowStartTimePicker(Platform.OS === "ios");
+
+    if (event.type === "set" && currentTime) {
+      const formatted = formatTimeString(currentTime);
+      if (isStartTimeBlocked(formatted)) {
+        setError("Ora de început este deja ocupată.");
+        return;
+      }
+      setError("");
+      setSelectedStartTime(currentTime);
+      setStartTime(formatted);
+    }
+  };
+
+  const onEndTimeChange = (event: any, selectedTime?: Date) => {
+    const currentTime = selectedTime || selectedEndTime;
+    setShowEndTimePicker(Platform.OS === "ios");
+
+    if (event.type === "set" && currentTime) {
+      const formatted = formatTimeString(currentTime);
+      if (isEndTimeBlocked(formatted)) {
+        setError("Intervalul selectat se suprapune cu o rezervare existentă.");
+        return;
+      }
+      setError("");
+      setSelectedEndTime(currentTime);
+      setEndTime(formatted);
+    }
+  };
 
   // ==================== RESERVATION ACTIONS ====================
 
   const handleSave = async () => {
-    console.log("[handleSave] Starting reservation save process");
-    console.log("[handleSave] Form data:", {
-      selectedBenchId,
-      date,
-      startTime,
-      endTime,
-      editingId,
-      userId: user?._id,
-      userRole: user?.role,
-    });
+    setError("");
+    setSuccessMessage("");
 
     if (!selectedBenchId || !date || !startTime || !endTime) {
-      console.warn("[handleSave] Validation failed: Missing required fields");
       setError("Please fill in all fields");
       return;
     }
 
     if (!user?._id) {
-      console.warn("[handleSave] Validation failed: No user ID");
       setError("User ID is required. Please login again.");
       return;
     }
 
     if (startTime >= endTime) {
-      console.warn(
-        "[handleSave] Validation failed: End time must be after start time"
-      );
       setError("End time must be after start time");
       return;
     }
 
-    console.log("[handleSave] Basic validation passed");
-
-    // Check for overlapping reservations (non-admin only)
+    // Overlap check (non-admin only)
     if (user?.role !== "admin") {
       try {
-        console.log("[handleSave] Checking for overlapping reservations...");
         const existingReservations = await getData<Reservation>(
           "reservations",
           {
@@ -560,49 +454,32 @@ export default function Reservations() {
           }
         );
 
-        console.log(
-          "[handleSave] Existing reservations found:",
-          existingReservations.length
-        );
-
         const overlappingReservation = existingReservations.find((res) => {
           if (editingId && res._id === editingId) return false;
-
           const resStart = res.startTime.trim();
           const resEnd = res.endTime.trim();
           const newStart = startTime.trim();
           const newEnd = endTime.trim();
-
           return newStart < resEnd && newEnd > resStart;
         });
 
         if (overlappingReservation) {
-          console.warn(
-            "[handleSave] Overlapping reservation found:",
-            overlappingReservation
-          );
           const day = formatDate(overlappingReservation.date);
           setError(
             `Sala este deja ocupată în data de ${day}, între orele ${overlappingReservation.startTime} – ${overlappingReservation.endTime}. Te rugăm să alegi alt interval.`
           );
           return;
         }
-        console.log("[handleSave] No overlapping reservations found");
-      } catch (error: any) {
-        console.error(
-          "[handleSave] Failed to check for overlapping reservations:",
-          error
-        );
+      } catch (e) {
+        // don't block save if check fails
+        console.warn("[handleSave] Overlap check failed:", e);
       }
     }
 
-    setError("");
-    setSuccessMessage("");
     setLoading(true);
 
     try {
       if (editingId) {
-        console.log("[handleSave] Updating existing reservation:", editingId);
         await modifyData(
           "reservations",
           { _id: editingId },
@@ -614,10 +491,9 @@ export default function Reservations() {
             status: "active",
           }
         );
-        console.log("[handleSave] Reservation updated successfully");
+
         setSuccessMessage("Reservation updated successfully");
       } else {
-        // Create new reservation
         const reservationData = {
           userId: user._id,
           benchId: selectedBenchId,
@@ -626,71 +502,45 @@ export default function Reservations() {
           endTime: endTime.trim(),
           status: "active",
         };
-        console.log(
-          "[handleSave] Creating new reservation with data:",
-          reservationData
-        );
-        const result = await setData("reservations", reservationData);
-        const reservationId = result?.documentId || result?.document?._id;
-        console.log(
-          "[handleSave] Reservation created successfully, ID:",
-          reservationId
-        );
-        console.log("[handleSave] Full result structure:", result);
 
-        // Notify bench owner directly (fallback if socket event doesn't fire)
-        if (reservationId) {
-          try {
-            console.log("[handleSave] Notifying bench owner directly...");
-            const reservingUserName = user?.name || "Someone";
-            await notifyBenchOwner(
-              reservationId,
-              selectedBenchId,
-              user._id,
-              reservingUserName,
-              date.trim(),
-              startTime.trim(),
-              endTime.trim()
-            );
-            console.log("[handleSave] Bench owner notification completed");
-          } catch (error) {
-            console.error("[handleSave] Failed to notify bench owner:", error);
-            // Don't fail the whole operation if notification fails
-          }
-        } else {
-          console.warn(
-            "[handleSave] No reservationId found in result, cannot notify bench owner"
-          );
-        }
+        const result: any = await setData("reservations", reservationData);
+        const reservationId =
+          result?.documentId || result?.document?._id || result?._id;
+
+        // Always notify on create (reliable)
+        const reservingUserName = user?.name || "Someone";
+
+        // If backend didn’t return an id, use a deterministic fallback key
+        const fallbackKey = `${
+          user._id
+        }_${selectedBenchId}_${date.trim()}_${startTime.trim()}_${endTime.trim()}`;
+        await notifyBenchOwner(
+          reservationId || fallbackKey,
+          selectedBenchId,
+          user._id,
+          reservingUserName,
+          date.trim(),
+          startTime.trim(),
+          endTime.trim()
+        );
 
         setSuccessMessage("Reservation created successfully");
       }
 
       // Reset form
-      console.log("[handleSave] Resetting form and refreshing data");
       setSelectedBenchId("");
       setDate("");
       setStartTime("");
       setEndTime("");
       setEditingId(null);
       setShowForm(false);
-      console.log("[handleSave] Calling fetchReservations...");
+
       await fetchReservations();
-      console.log("[handleSave] fetchReservations completed");
-      console.log("[handleSave] Calling fetchAllReservations...");
       await fetchAllReservations();
-      console.log("[handleSave] fetchAllReservations completed");
-      console.log("[handleSave] Process completed successfully");
-    } catch (error: any) {
-      console.error("[handleSave] Error saving reservation:", error);
-      console.error("[handleSave] Error details:", {
-        message: error.message,
-        stack: error.stack,
-        error: error,
-      });
-      setError(error.message || "Failed to save reservation");
+    } catch (e: any) {
+      console.error("[handleSave] Error:", e);
+      setError(e?.message || "Failed to save reservation");
     } finally {
-      console.log("[handleSave] Setting loading to false");
       setLoading(false);
     }
   };
@@ -704,8 +554,8 @@ export default function Reservations() {
       setSuccessMessage("Reservation cancelled successfully");
       await fetchReservations();
       await fetchAllReservations();
-    } catch (error: any) {
-      setError(error.message || "Failed to cancel reservation");
+    } catch (e: any) {
+      setError(e?.message || "Failed to cancel reservation");
     } finally {
       setLoading(false);
     }
@@ -720,8 +570,8 @@ export default function Reservations() {
       setSuccessMessage("Reservation deleted successfully");
       await fetchReservations();
       await fetchAllReservations();
-    } catch (error: any) {
-      setError(error.message || "Failed to delete reservation");
+    } catch (e: any) {
+      setError(e?.message || "Failed to delete reservation");
     } finally {
       setLoading(false);
     }
@@ -771,122 +621,6 @@ export default function Reservations() {
     }
     handleCancelEdit();
     setShowForm(true);
-  };
-
-  // ==================== UTILITY FUNCTIONS ====================
-
-  const formatDateString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const formatTimeString = (date: Date): string => {
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${hours}:${minutes}`;
-  };
-
-  const parseDate = (dateStr: string): Date => {
-    if (!dateStr) return new Date();
-    const [year, month, day] = dateStr.split("-").map(Number);
-    return new Date(year, month - 1, day);
-  };
-
-  const parseTime = (timeStr: string, baseDate: Date): Date => {
-    if (!timeStr) return new Date();
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    const date = new Date(baseDate);
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString("en-US", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const onDateChange = (event: any, newDate?: Date) => {
-    const currentDate = newDate || selectedDate;
-    setShowDatePicker(Platform.OS === "ios");
-    if (event.type === "set" && currentDate) {
-      setSelectedDate(currentDate);
-      setDate(formatDateString(currentDate));
-    }
-  };
-
-  const onStartTimeChange = (event: any, selectedTime?: Date) => {
-    const currentTime = selectedTime || selectedStartTime;
-    setShowStartTimePicker(Platform.OS === "ios");
-
-    if (event.type === "set" && currentTime) {
-      const formatted = formatTimeString(currentTime);
-      if (isStartTimeBlocked(formatted)) {
-        setError("Ora de început este deja ocupată.");
-        return;
-      }
-      setError("");
-      setSelectedStartTime(currentTime);
-      setStartTime(formatted);
-    }
-  };
-
-  const onEndTimeChange = (event: any, selectedTime?: Date) => {
-    const currentTime = selectedTime || selectedEndTime;
-    setShowEndTimePicker(Platform.OS === "ios");
-
-    if (event.type === "set" && currentTime) {
-      const formatted = formatTimeString(currentTime);
-      if (isEndTimeBlocked(formatted)) {
-        setError("Intervalul selectat se suprapune cu o rezervare existentă.");
-        return;
-      }
-      setError("");
-      setSelectedEndTime(currentTime);
-      setEndTime(formatted);
-    }
-  };
-
-  // ==================== AVAILABILITY HELPERS ====================
-
-  const getBenchOccupancyForDate = (benchId: string, date: string) => {
-    return allReservations
-      .filter(
-        (r) => r.benchId === benchId && r.date === date && r.status === "active"
-      )
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
-  };
-
-  const getDisabledTimeRanges = () => {
-    if (!selectedBenchId || !date) return [];
-    return allReservations.filter(
-      (r) =>
-        r.benchId === selectedBenchId &&
-        r.date === date &&
-        r.status === "active" &&
-        (!editingId || r._id !== editingId)
-    );
-  };
-
-  const isStartTimeBlocked = (time: string) => {
-    return getDisabledTimeRanges().some(
-      (r) => time >= r.startTime && time < r.endTime
-    );
-  };
-
-  const isEndTimeBlocked = (time: string) => {
-    return getDisabledTimeRanges().some(
-      (r) => time > r.startTime && time <= r.endTime
-    );
   };
 
   // ==================== STATUS HELPERS ====================
@@ -959,6 +693,7 @@ export default function Reservations() {
             </TouchableOpacity>
           </View>
         ) : null}
+
         {successMessage ? (
           <View
             style={tw`bg-emerald-50 border-l-4 border-emerald-500 rounded-xl p-4 mb-6 flex-row items-center justify-between shadow-sm`}
@@ -1080,6 +815,7 @@ export default function Reservations() {
                               </View>
                             )}
                           </View>
+
                           <View style={tw`flex-row items-center gap-2 mb-2`}>
                             <Text style={tw`text-gray-500`}>📍</Text>
                             <Text
@@ -1308,6 +1044,7 @@ export default function Reservations() {
                   </Text>
                 )}
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={tw`bg-gray-100 px-5 py-3.5 rounded-xl items-center justify-center active:bg-gray-200`}
                 onPress={handleCancelEdit}
@@ -1431,12 +1168,14 @@ export default function Reservations() {
                       >
                         {reservation.benchName}
                       </Text>
+
                       <View style={tw`flex-row items-center gap-2.5 mb-2`}>
                         <Text style={tw`text-gray-500 text-base`}>📍</Text>
                         <Text style={tw`text-base text-gray-700 font-medium`}>
                           {reservation.location}
                         </Text>
                       </View>
+
                       {user?.role === "admin" && reservation.userName && (
                         <View style={tw`flex-row items-center gap-2.5 mb-1`}>
                           <Text style={tw`text-gray-500 text-base`}>👤</Text>
@@ -1452,6 +1191,7 @@ export default function Reservations() {
                         </View>
                       )}
                     </View>
+
                     <View
                       style={tw`px-5 py-2 rounded-full ${getStatusColor(
                         reservation.status
@@ -1474,6 +1214,7 @@ export default function Reservations() {
                         {formatDate(reservation.date)}
                       </Text>
                     </View>
+
                     <View style={tw`flex-row items-center gap-3`}>
                       <Text style={tw`text-blue-600 text-lg`}>⏰</Text>
                       <Text style={tw`text-base font-semibold text-gray-800`}>
@@ -1482,7 +1223,7 @@ export default function Reservations() {
                     </View>
                   </View>
 
-                  {reservation.status === "active" && (
+                  {reservation.status === "active" ? (
                     <View style={tw`flex-row gap-3 pt-2`}>
                       <TouchableOpacity
                         style={tw`flex-1 bg-blue-600 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:opacity-90`}
@@ -1495,6 +1236,7 @@ export default function Reservations() {
                           Edit
                         </Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
                         style={tw`flex-1 bg-orange-600 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:opacity-90`}
                         onPress={() => handleCancel(reservation._id)}
@@ -1506,6 +1248,7 @@ export default function Reservations() {
                           Cancel
                         </Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
                         style={tw`flex-1 bg-red-600 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:opacity-90`}
                         onPress={() => handleDelete(reservation._id)}
@@ -1518,9 +1261,7 @@ export default function Reservations() {
                         </Text>
                       </TouchableOpacity>
                     </View>
-                  )}
-
-                  {reservation.status !== "active" && (
+                  ) : (
                     <View style={tw`flex-row gap-3 pt-2`}>
                       <TouchableOpacity
                         style={tw`flex-1 bg-red-600 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:opacity-90`}

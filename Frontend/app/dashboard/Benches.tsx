@@ -101,6 +101,103 @@ export default function Benches() {
     return cleanup;
   }, []);
 
+  const createMessageOnce = useCallback(
+    async (
+      messageId: string,
+      payload: { userId: string; title: string; content: string }
+    ) => {
+      // quick sanity
+      if (!payload.userId) return;
+
+      try {
+        const existing = await getData<any>("messages", { _id: messageId });
+        if (existing && existing.length > 0) return;
+
+        await setData("messages", {
+          _id: messageId,
+          userId: payload.userId,
+          title: payload.title,
+          content: payload.content,
+          createdAt: new Date().toISOString(),
+          read: false,
+        });
+      } catch (e: any) {
+        const msg = String(e?.message ?? "");
+        if (/duplicate|already exists|conflict|409|exists/i.test(msg)) return;
+        throw e;
+      }
+    },
+    []
+  );
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Keep this helper (call it from your BENCH DELETE action screen)
+  const notifyUsersOfBenchDeletion = useCallback(
+    async (benchId: string, benchData?: any) => {
+      try {
+        let bench = benchData ?? benches.find((b) => b._id === benchId);
+
+        if (!bench) {
+          try {
+            const benchesData = await getData<Bench>("benches", {
+              _id: benchId,
+            });
+            bench = benchesData?.[0] ?? null;
+          } catch {
+            bench = { _id: benchId, name: "the bench" } as Bench;
+          }
+        }
+
+        const benchName = bench?.name || "the bench";
+
+        const affectedReservations = await getData<Reservation>(
+          "reservations",
+          {
+            benchId,
+            status: "active",
+          }
+        );
+
+        for (const reservation of affectedReservations) {
+          try {
+            if (reservation.userId) {
+              const msgId = `msg_bench_deleted_${reservation._id}`;
+              await createMessageOnce(msgId, {
+                userId: reservation.userId,
+                title: "Bench Deleted - Reservation Cancelled",
+                content: `The bench "${benchName}" has been deleted. Your reservation on ${formatDate(
+                  reservation.date
+                )} from ${reservation.startTime} to ${
+                  reservation.endTime
+                } has been cancelled.`,
+              });
+            }
+
+            await deleteData("reservations", { _id: reservation._id });
+          } catch (err) {
+            console.error(
+              `[notifyUsersOfBenchDeletion] Failed reservation ${reservation._id}:`,
+              err
+            );
+          }
+        }
+      } catch (err) {
+        console.error("[notifyUsersOfBenchDeletion] Failed:", err);
+      }
+    },
+    [benches, createMessageOnce]
+  );
   // Fetch all benches and reservations
   const fetchBenches = useCallback(async () => {
     setError("");
@@ -201,6 +298,7 @@ export default function Benches() {
       await deleteData("benches", { _id: id });
       setSuccessMessage("Bench deleted successfully");
       await fetchBenches();
+      notifyUsersOfBenchDeletion(id);
     } catch (error: any) {
       setError(error.message || "Failed to delete bench");
     } finally {
