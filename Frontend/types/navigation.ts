@@ -7,4 +7,5 @@ export type MainStackParamList = {
   Products: undefined;
   Benches: undefined;
   Reservations: undefined;
+  Messages: undefined;
 };

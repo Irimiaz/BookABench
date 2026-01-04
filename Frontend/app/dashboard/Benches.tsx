@@ -1,17 +1,14 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  FlatList,
   ScrollView,
-  Alert,
   Platform,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useFocusEffect } from "@react-navigation/native";
 import BaseScreen from "../../components/BaseScreen";
 import useStackNavigation from "../../hooks/useStackNavigation";
 import { MainStackParamList } from "../../types/navigation";
@@ -21,7 +18,7 @@ import {
   modifyData,
   deleteData,
   onDatabaseChange,
-  type DatabaseChangeMessage,
+  DatabaseChangeMessage,
 } from "../../utils/exportHelpers";
 import { useAuth } from "../../contexts/AuthContext";
 import tw from "twrnc";
@@ -52,7 +49,7 @@ type Reservation = {
 // Web-native input component for date
 const WebInput = ({ type, value, onChangeText, min, ...props }: any) => {
   if (Platform.OS !== "web") return null;
-  
+
   return React.createElement("input", {
     type,
     value: value || "",
@@ -80,7 +77,6 @@ export default function Benches() {
   const [benches, setBenches] = useState<Bench[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -96,90 +92,53 @@ export default function Benches() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Fetch all benches and reservations
-  const fetchBenches = async () => {
-    setFetching(true);
-    setError("");
-    try {
-      const benchesData = await getData<Bench>("benches", {});
-      setBenches(benchesData || []);
-
-      // Fetch active reservations
-      const reservationsData = await getData<Reservation>("reservations", {
-        status: "active",
-      });
-
-      // Fetch user information for each reservation (for all users)
-      // Get unique user IDs
-      const userIds = [...new Set(reservationsData.map((res) => res.userId))];
-      // Fetch user data for all unique user IDs
-      const usersData = await Promise.all(
-        userIds.map(async (userId) => {
-          try {
-            const users = await getData<any>("users", { _id: userId });
-            return users.length > 0 ? users[0] : null;
-          } catch {
-            return null;
-          }
-        })
-      );
-      
-      // Create a map of userId to user data
-      const userMap = new Map();
-      userIds.forEach((userId, index) => {
-        if (usersData[index]) {
-          userMap.set(userId, usersData[index]);
-        }
-      });
-      
-      // Enrich reservations with user information
-      const enriched = reservationsData.map((res) => {
-        const userData = userMap.get(res.userId);
-        return {
-          ...res,
-          userName: userData?.name || "Unknown User",
-          userEmail: userData?.email || "",
-        };
-      });
-      
-      setReservations(enriched || []);
-    } catch (error: any) {
-      setError(error.message || "Failed to fetch benches");
-    } finally {
-      setFetching(false);
-    }
-  };
-
-  // Fetch benches on mount
   useEffect(() => {
-    fetchBenches();
-  }, []);
-
-  // Refresh benches when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      fetchBenches();
-    }, [])
-  );
-
-  // Listen for real-time database changes via socket
-  useEffect(() => {
-    if (!user?._id) return;
-
     const cleanup = onDatabaseChange((message: DatabaseChangeMessage) => {
-      // Refresh benches if benches collection changed
       if (message.collection === "benches") {
         fetchBenches();
       }
-      // Refresh benches if reservations changed (affects availability)
-      if (message.collection === "reservations") {
-        fetchBenches();
-      }
     });
-
     return cleanup;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?._id]);
+  }, []);
+
+  // Fetch all benches and reservations
+  const fetchBenches = useCallback(async () => {
+    setError("");
+    try {
+      const [benchesData, reservationsData] = await Promise.all([
+        getData<Bench>("benches", {}),
+        getData<Reservation>("reservations", { status: "active" }),
+      ]);
+
+      setBenches(benchesData || []);
+
+      // Get unique user IDs and fetch their data in parallel
+      const userIds = [...new Set(reservationsData.map((res) => res.userId))];
+      const userMap: Record<string, any> = {};
+
+      if (userIds.length > 0) {
+        await Promise.all(
+          userIds.map(async (userId) => {
+            const users = await getData<any>("users", { _id: userId }).catch(
+              () => []
+            );
+            if (users[0]) userMap[userId] = users[0];
+          })
+        );
+      }
+
+      // Enrich reservations with user information
+      const enriched = reservationsData.map((res) => ({
+        ...res,
+        userName: userMap[res.userId]?.name || "Unknown User",
+        userEmail: userMap[res.userId]?.email || "",
+      }));
+
+      setReservations(enriched || []);
+    } catch (error: any) {
+      setError(error.message || "Failed to fetch benches");
+    }
+  }, []);
 
   // Create or Update bench
   const handleSave = async () => {
@@ -209,6 +168,7 @@ export default function Benches() {
         // Create new bench
         await setData("benches", {
           name: benchName.trim(),
+          adminId: user?._id,
           location: location.trim(),
           description: description.trim() || undefined,
           capacity: capacity ? parseInt(capacity) : undefined,
@@ -287,11 +247,7 @@ export default function Benches() {
   // Get bench reservations for a specific date
   const getBenchReservationsForDate = (benchId: string, date: string) => {
     return reservations
-      .filter(
-        (r) =>
-          r.benchId === benchId &&
-          r.date === date
-      )
+      .filter((r) => r.benchId === benchId && r.date === date)
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   };
 
@@ -303,6 +259,9 @@ export default function Benches() {
       setSelectedDate(currentDate);
     }
   };
+  useEffect(() => {
+    fetchBenches();
+  }, []);
 
   // Calculate stats
   const totalBenches = benches.length;
@@ -315,8 +274,8 @@ export default function Benches() {
       subtitle="Find your perfect study spot on campus"
       onBack={goBack}
     >
-      <ScrollView 
-        style={tw`flex-1 bg-white`} 
+      <ScrollView
+        style={tw`flex-1 bg-white`}
         contentContainerStyle={tw`pb-8 px-5`}
         nestedScrollEnabled={true}
         keyboardShouldPersistTaps="handled"
@@ -329,7 +288,11 @@ export default function Benches() {
                 style={tw`bg-emerald-600 px-6 py-4 rounded-2xl flex-1 shadow-lg active:opacity-90`}
                 onPress={() => goToScreen("Reservations")}
               >
-                <Text style={tw`text-white font-semibold text-center text-base tracking-wide`}>My Bookings</Text>
+                <Text
+                  style={tw`text-white font-semibold text-center text-base tracking-wide`}
+                >
+                  My Bookings
+                </Text>
               </TouchableOpacity>
               {isAdmin && (
                 <TouchableOpacity
@@ -337,9 +300,23 @@ export default function Benches() {
                   onPress={handleNewBench}
                 >
                   <Text style={tw`text-white font-bold text-xl`}>+</Text>
-                  <Text style={tw`text-white font-semibold text-base tracking-wide`}>Add Bench</Text>
+                  <Text
+                    style={tw`text-white font-semibold text-base tracking-wide`}
+                  >
+                    Add Bench
+                  </Text>
                 </TouchableOpacity>
               )}
+              <TouchableOpacity
+                style={tw`bg-purple-600 px-6 py-4 rounded-2xl flex-1 shadow-lg active:opacity-90`}
+                onPress={() => goToScreen("Messages")}
+              >
+                <Text
+                  style={tw`text-white font-semibold text-center text-base tracking-wide`}
+                >
+                  Messages
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -351,9 +328,11 @@ export default function Benches() {
           >
             <View style={tw`flex-row items-center gap-3 flex-1`}>
               <Text style={tw`text-red-500 text-xl`}>⚠️</Text>
-              <Text style={tw`text-red-800 flex-1 font-medium text-base`}>{error}</Text>
+              <Text style={tw`text-red-800 flex-1 font-medium text-base`}>
+                {error}
+              </Text>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setError("")}
               style={tw`p-1.5 rounded-full active:bg-red-100`}
             >
@@ -367,9 +346,11 @@ export default function Benches() {
           >
             <View style={tw`flex-row items-center gap-3 flex-1`}>
               <Text style={tw`text-emerald-600 text-xl`}>✨</Text>
-              <Text style={tw`text-emerald-900 font-medium text-base`}>{successMessage}</Text>
+              <Text style={tw`text-emerald-900 font-medium text-base`}>
+                {successMessage}
+              </Text>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setSuccessMessage("")}
               style={tw`p-1.5 rounded-full active:bg-emerald-100`}
             >
@@ -380,10 +361,14 @@ export default function Benches() {
 
         {/* Form Section (only for admin) */}
         {showForm && isAdmin && (
-          <View style={tw`bg-white rounded-3xl p-8 mb-8 border border-gray-300 shadow-sm`}>
+          <View
+            style={tw`bg-white rounded-3xl p-8 mb-8 border border-gray-300 shadow-sm`}
+          >
             <View style={tw`flex-row justify-between items-start mb-8`}>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-4xl font-bold mb-3 text-gray-900 tracking-tight`}>
+                <Text
+                  style={tw`text-4xl font-bold mb-3 text-gray-900 tracking-tight`}
+                >
                   {editingId ? "Edit Bench" : "Add New Bench"}
                 </Text>
                 <Text style={tw`text-gray-600 text-lg`}>
@@ -462,7 +447,9 @@ export default function Benches() {
                   <ActivityIndicator color="white" />
                 ) : (
                   <>
-                    <Text style={tw`text-white font-semibold text-base tracking-wide`}>
+                    <Text
+                      style={tw`text-white font-semibold text-base tracking-wide`}
+                    >
                       {editingId ? "Update Bench" : "Create Bench"}
                     </Text>
                   </>
@@ -474,7 +461,11 @@ export default function Benches() {
                 onPress={handleCancelEdit}
                 disabled={loading}
               >
-                <Text style={tw`text-gray-700 font-semibold text-base tracking-wide`}>Cancel</Text>
+                <Text
+                  style={tw`text-gray-700 font-semibold text-base tracking-wide`}
+                >
+                  Cancel
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -525,38 +516,56 @@ export default function Benches() {
 
         {/* Stats Bar */}
         <View style={tw`flex-row gap-5 mb-8`}>
-          <View style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-lg`}>
+          <View
+            style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-lg`}
+          >
             <View style={tw`flex-row items-center gap-4`}>
               <View style={tw`p-3 rounded-2xl bg-blue-50`}>
                 <Text style={tw`text-blue-600 text-lg`}>📍</Text>
               </View>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-4xl font-bold text-gray-900 mb-1`}>{totalBenches}</Text>
-                <Text style={tw`text-sm text-gray-600 font-semibold`}>Total Spaces</Text>
+                <Text style={tw`text-4xl font-bold text-gray-900 mb-1`}>
+                  {totalBenches}
+                </Text>
+                <Text style={tw`text-sm text-gray-600 font-semibold`}>
+                  Total Spaces
+                </Text>
               </View>
             </View>
           </View>
 
-          <View style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-lg`}>
+          <View
+            style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-lg`}
+          >
             <View style={tw`flex-row items-center gap-4`}>
               <View style={tw`p-3 rounded-2xl bg-emerald-50`}>
                 <Text style={tw`text-emerald-600 text-lg`}>✨</Text>
               </View>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-4xl font-bold text-gray-900 mb-1`}>{availableBenches}</Text>
-                <Text style={tw`text-sm text-gray-600 font-semibold`}>Available Now</Text>
+                <Text style={tw`text-4xl font-bold text-gray-900 mb-1`}>
+                  {availableBenches}
+                </Text>
+                <Text style={tw`text-sm text-gray-600 font-semibold`}>
+                  Available Now
+                </Text>
               </View>
             </View>
           </View>
 
-          <View style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-lg`}>
+          <View
+            style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-lg`}
+          >
             <View style={tw`flex-row items-center gap-4`}>
               <View style={tw`p-3 rounded-2xl bg-amber-50`}>
                 <Text style={tw`text-amber-600 text-lg`}>👥</Text>
               </View>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-4xl font-bold text-gray-900 mb-1`}>{totalCapacity}</Text>
-                <Text style={tw`text-sm text-gray-600 font-semibold`}>Total Capacity</Text>
+                <Text style={tw`text-4xl font-bold text-gray-900 mb-1`}>
+                  {totalCapacity}
+                </Text>
+                <Text style={tw`text-sm text-gray-600 font-semibold`}>
+                  Total Capacity
+                </Text>
               </View>
             </View>
           </View>
@@ -568,7 +577,9 @@ export default function Benches() {
             <Text style={tw`text-4xl font-bold text-gray-900 tracking-tight`}>
               Available Study Spaces
             </Text>
-            <View style={tw`bg-white border border-gray-300 px-5 py-2 rounded-full shadow-sm`}>
+            <View
+              style={tw`bg-white border border-gray-300 px-5 py-2 rounded-full shadow-sm`}
+            >
               <Text style={tw`text-sm text-gray-700 font-semibold`}>
                 {benches.length} {benches.length === 1 ? "space" : "spaces"}
               </Text>
@@ -576,9 +587,13 @@ export default function Benches() {
           </View>
 
           {benches.length === 0 ? (
-            <View style={tw`bg-white rounded-3xl p-16 items-center border border-gray-300 shadow-lg`}>
+            <View
+              style={tw`bg-white rounded-3xl p-16 items-center border border-gray-300 shadow-lg`}
+            >
               <Text style={tw`text-7xl mb-6`}>📍</Text>
-              <Text style={tw`text-2xl font-bold mb-3 text-gray-900`}>No benches yet</Text>
+              <Text style={tw`text-2xl font-bold mb-3 text-gray-900`}>
+                No benches yet
+              </Text>
               <Text style={tw`text-gray-600 text-center mb-8 text-lg`}>
                 {isAdmin
                   ? "Create your first study space to get started."
@@ -590,7 +605,9 @@ export default function Benches() {
                   onPress={handleNewBench}
                 >
                   <Text style={tw`text-white font-bold text-xl`}>+</Text>
-                  <Text style={tw`text-white font-semibold text-base tracking-wide`}>
+                  <Text
+                    style={tw`text-white font-semibold text-base tracking-wide`}
+                  >
                     Add First Bench
                   </Text>
                 </TouchableOpacity>
@@ -605,7 +622,9 @@ export default function Benches() {
                 >
                   <View style={tw`flex-row justify-between items-start mb-4`}>
                     <View style={tw`flex-1`}>
-                      <Text style={tw`text-3xl font-bold mb-3 text-gray-900 tracking-tight`}>
+                      <Text
+                        style={tw`text-3xl font-bold mb-3 text-gray-900 tracking-tight`}
+                      >
                         {item.name}
                       </Text>
                       <View style={tw`flex-row items-center gap-2.5 mb-2`}>
@@ -635,25 +654,50 @@ export default function Benches() {
                   {/* Availability for selected date */}
                   {(() => {
                     const dateStr = formatDateString(selectedDate);
-                    const benchReservations = getBenchReservationsForDate(item._id, dateStr);
+                    const benchReservations = getBenchReservationsForDate(
+                      item._id,
+                      dateStr
+                    );
                     return benchReservations.length > 0 ? (
                       <View style={tw`mb-4`}>
                         {benchReservations.map((r) => {
                           const isMyReservation = r.userId === user?._id;
                           return (
                             <View key={r._id} style={tw`mt-3`}>
-                              <View style={tw`flex-row items-center gap-2 flex-wrap`}>
-                                <View style={tw`w-3 h-3 rounded-full ${isMyReservation ? "bg-amber-500" : "bg-red-500"}`} />
-                                <Text style={tw`${isMyReservation ? "text-amber-700" : "text-red-700"} text-base font-semibold`}>
-                                  {isMyReservation ? "Your reservation" : "Ocupată"} {r.startTime} – {r.endTime}
+                              <View
+                                style={tw`flex-row items-center gap-2 flex-wrap`}
+                              >
+                                <View
+                                  style={tw`w-3 h-3 rounded-full ${
+                                    isMyReservation
+                                      ? "bg-amber-500"
+                                      : "bg-red-500"
+                                  }`}
+                                />
+                                <Text
+                                  style={tw`${
+                                    isMyReservation
+                                      ? "text-amber-700"
+                                      : "text-red-700"
+                                  } text-base font-semibold`}
+                                >
+                                  {isMyReservation
+                                    ? "Your reservation"
+                                    : "Ocupată"}{" "}
+                                  {r.startTime} – {r.endTime}
                                 </Text>
                                 {r.userName && (
                                   <>
                                     <Text style={tw`text-gray-500`}>•</Text>
-                                    <Text style={tw`text-sm text-gray-700 font-medium`}>
+                                    <Text
+                                      style={tw`text-sm text-gray-700 font-medium`}
+                                    >
                                       {r.userName}
                                       {isAdmin && r.userEmail && (
-                                        <Text style={tw`text-gray-600`}> ({r.userEmail})</Text>
+                                        <Text style={tw`text-gray-600`}>
+                                          {" "}
+                                          ({r.userEmail})
+                                        </Text>
                                       )}
                                     </Text>
                                   </>
@@ -664,7 +708,9 @@ export default function Benches() {
                         })}
                       </View>
                     ) : (
-                      <Text style={tw`text-emerald-700 text-base font-semibold mt-1 mb-4`}>
+                      <Text
+                        style={tw`text-emerald-700 text-base font-semibold mt-1 mb-4`}
+                      >
                         🟢 Liberă azi
                       </Text>
                     );
@@ -677,15 +723,23 @@ export default function Benches() {
                         style={tw`flex-1 bg-blue-600 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:opacity-90`}
                         onPress={() => handleEdit(item)}
                       >
-                        <Text style={tw`text-white font-semibold text-base`}>✏️</Text>
-                        <Text style={tw`text-white font-semibold text-base`}>Edit</Text>
+                        <Text style={tw`text-white font-semibold text-base`}>
+                          ✏️
+                        </Text>
+                        <Text style={tw`text-white font-semibold text-base`}>
+                          Edit
+                        </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={tw`flex-1 bg-red-600 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:opacity-90`}
                         onPress={() => handleDelete(item._id)}
                       >
-                        <Text style={tw`text-white font-semibold text-base`}>🗑️</Text>
-                        <Text style={tw`text-white font-semibold text-base`}>Delete</Text>
+                        <Text style={tw`text-white font-semibold text-base`}>
+                          🗑️
+                        </Text>
+                        <Text style={tw`text-white font-semibold text-base`}>
+                          Delete
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   ) : (
@@ -694,7 +748,9 @@ export default function Benches() {
                       onPress={() => goToScreen("Reservations")}
                     >
                       <Text style={tw`text-white text-base`}>📅</Text>
-                      <Text style={tw`text-white font-semibold text-base tracking-wide`}>
+                      <Text
+                        style={tw`text-white font-semibold text-base tracking-wide`}
+                      >
                         Reserve Now
                       </Text>
                     </TouchableOpacity>

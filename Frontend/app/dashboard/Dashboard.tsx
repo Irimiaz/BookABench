@@ -21,7 +21,10 @@ import {
   type RegisterData,
   type LoginData,
 } from "../../utils/apiHelpers";
-import { setupSocketConnection } from "../../utils/socketHelpers";
+import {
+  setupSocketConnection,
+  subscribeToChanges,
+} from "../../utils/socketHelpers";
 import { useAuth } from "../../contexts/AuthContext";
 import tw from "twrnc";
 
@@ -59,10 +62,7 @@ const InputField = ({
           autoCapitalize={autoCapitalize}
         />
         {showPasswordToggle && (
-          <TouchableOpacity
-            onPress={onTogglePassword}
-            style={tw`ml-2`}
-          >
+          <TouchableOpacity onPress={onTogglePassword} style={tw`ml-2`}>
             <Ionicons
               name={secureTextEntry ? "eye-off-outline" : "eye-outline"}
               size={20}
@@ -135,7 +135,7 @@ export default function Dashboard() {
       setUser(response.user);
 
       // Connect to socket and subscribe to benches and reservations collections
-      const collections = ["benches", "reservations"];
+      const collections = ["benches", "messages"];
       setupSocketConnection(response.user._id, collections, (message) => {
         console.log("Received message from socket:", message);
       });
@@ -175,10 +175,10 @@ export default function Dashboard() {
         teacherID: teacherID.trim() || undefined,
       };
       const response = await register(registerData);
-      
+
       // Store user in context
       setUser(response.user);
-      
+
       setIsLogin(true);
       // Clear teacherID field
       setTeacherID("");
@@ -257,7 +257,9 @@ export default function Dashboard() {
                   style={tw`bg-red-100 border-2 border-red-400 rounded-xl p-4 mb-4 flex-row items-center shadow-sm`}
                 >
                   <Ionicons name="alert-circle" size={20} color="#dc2626" />
-                  <Text style={tw`text-red-700 ml-2 flex-1 font-medium`}>{error}</Text>
+                  <Text style={tw`text-red-700 ml-2 flex-1 font-medium`}>
+                    {error}
+                  </Text>
                 </View>
               ) : null}
 
@@ -276,14 +278,20 @@ export default function Dashboard() {
                     autoCapitalize="words"
                   />
                   <InputField
-                    icon={{ type: MaterialCommunityIcons, name: "school-outline" }}
+                    icon={{
+                      type: MaterialCommunityIcons,
+                      name: "school-outline",
+                    }}
                     placeholder="University Name"
                     value={universityName}
                     onChangeText={setUniversityName}
                     autoCapitalize="words"
                   />
                   <InputField
-                    icon={{ type: MaterialCommunityIcons, name: "calendar-account-outline" }}
+                    icon={{
+                      type: MaterialCommunityIcons,
+                      name: "calendar-account-outline",
+                    }}
                     placeholder="University Year"
                     value={universityYear}
                     onChangeText={setUniversityYear}
@@ -297,7 +305,10 @@ export default function Dashboard() {
                     keyboardType="phone-pad"
                   />
                   <InputField
-                    icon={{ type: MaterialCommunityIcons, name: "account-key-outline" }}
+                    icon={{
+                      type: MaterialCommunityIcons,
+                      name: "account-key-outline",
+                    }}
                     placeholder="Teacher ID (optional, for admin)"
                     value={teacherID}
                     onChangeText={setTeacherID}
