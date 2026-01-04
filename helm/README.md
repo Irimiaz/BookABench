@@ -56,11 +56,7 @@ helm upgrade --install bookabench ./helm/bookabench -n bookabench --create-names
 
 ### MongoDB Compass (Desktop App)
 
-```bash
-kubectl -n bookabench port-forward svc/mongodb 27017:27017
-```
-
-Connection: `mongodb://root:rootpass123@localhost:27017/?authSource=admin`
+Connection: `mongodb://root:rootpass123@localhost:32017/?authSource=admin`
 
 ### Mongo Express (Web UI)
 
