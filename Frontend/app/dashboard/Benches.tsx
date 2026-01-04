@@ -326,14 +326,14 @@ export default function Benches() {
           <View style={tw`mb-8`}>
             <View style={tw`flex-row gap-4`}>
               <TouchableOpacity
-                style={tw`bg-emerald-600 px-6 py-4 rounded-2xl flex-1 border border-emerald-700 active:opacity-90`}
+                style={tw`bg-emerald-600 px-6 py-4 rounded-2xl flex-1 shadow-lg active:opacity-90`}
                 onPress={() => goToScreen("Reservations")}
               >
                 <Text style={tw`text-white font-semibold text-center text-base tracking-wide`}>My Bookings</Text>
               </TouchableOpacity>
               {isAdmin && (
                 <TouchableOpacity
-                  style={tw`bg-blue-700 px-6 py-4 rounded-2xl flex-1 flex-row items-center justify-center gap-2 border border-blue-800 active:opacity-90`}
+                  style={tw`bg-blue-700 px-6 py-4 rounded-2xl flex-1 flex-row items-center justify-center gap-2 shadow-lg active:opacity-90`}
                   onPress={handleNewBench}
                 >
                   <Text style={tw`text-white font-bold text-xl`}>+</Text>
@@ -347,7 +347,7 @@ export default function Benches() {
         {/* Messages */}
         {error ? (
           <View
-            style={tw`bg-red-50 border-l-4 border-red-400 rounded-xl p-4 mb-6 flex-row items-center justify-between`}
+            style={tw`bg-red-50 border-l-4 border-red-400 rounded-xl p-4 mb-6 flex-row items-center justify-between shadow-sm`}
           >
             <View style={tw`flex-row items-center gap-3 flex-1`}>
               <Text style={tw`text-red-500 text-xl`}>⚠️</Text>
@@ -363,7 +363,7 @@ export default function Benches() {
         ) : null}
         {successMessage ? (
           <View
-            style={tw`bg-emerald-50 border-l-4 border-emerald-500 rounded-xl p-4 mb-6 flex-row items-center justify-between`}
+            style={tw`bg-emerald-50 border-l-4 border-emerald-500 rounded-xl p-4 mb-6 flex-row items-center justify-between shadow-sm`}
           >
             <View style={tw`flex-row items-center gap-3 flex-1`}>
               <Text style={tw`text-emerald-600 text-xl`}>✨</Text>
@@ -454,7 +454,7 @@ export default function Benches() {
 
             <View style={tw`flex-row gap-4 pt-4 border-t border-gray-200`}>
               <TouchableOpacity
-                style={tw`flex-1 bg-blue-700 px-6 py-4 rounded-2xl items-center justify-center flex-row gap-2 border border-blue-800 active:opacity-90`}
+                style={tw`flex-1 bg-blue-700 px-6 py-4 rounded-2xl items-center justify-center flex-row gap-2 shadow-md active:opacity-90`}
                 onPress={handleSave}
                 disabled={loading}
               >
@@ -525,7 +525,7 @@ export default function Benches() {
 
         {/* Stats Bar */}
         <View style={tw`flex-row gap-5 mb-8`}>
-          <View style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-sm`}>
+          <View style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-lg`}>
             <View style={tw`flex-row items-center gap-4`}>
               <View style={tw`p-3 rounded-2xl bg-blue-50`}>
                 <Text style={tw`text-blue-600 text-lg`}>📍</Text>
@@ -537,7 +537,7 @@ export default function Benches() {
             </View>
           </View>
 
-          <View style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-sm`}>
+          <View style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-lg`}>
             <View style={tw`flex-row items-center gap-4`}>
               <View style={tw`p-3 rounded-2xl bg-emerald-50`}>
                 <Text style={tw`text-emerald-600 text-lg`}>✨</Text>
@@ -549,7 +549,7 @@ export default function Benches() {
             </View>
           </View>
 
-          <View style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-sm`}>
+          <View style={tw`flex-1 bg-white rounded-3xl p-6 border border-gray-300 shadow-lg`}>
             <View style={tw`flex-row items-center gap-4`}>
               <View style={tw`p-3 rounded-2xl bg-amber-50`}>
                 <Text style={tw`text-amber-600 text-lg`}>👥</Text>
@@ -568,7 +568,7 @@ export default function Benches() {
             <Text style={tw`text-4xl font-bold text-gray-900 tracking-tight`}>
               Available Study Spaces
             </Text>
-            <View style={tw`bg-white border border-gray-300 px-5 py-2 rounded-full`}>
+            <View style={tw`bg-white border border-gray-300 px-5 py-2 rounded-full shadow-sm`}>
               <Text style={tw`text-sm text-gray-700 font-semibold`}>
                 {benches.length} {benches.length === 1 ? "space" : "spaces"}
               </Text>
@@ -576,7 +576,7 @@ export default function Benches() {
           </View>
 
           {benches.length === 0 ? (
-            <View style={tw`bg-white rounded-3xl p-16 items-center border border-gray-300 shadow-sm`}>
+            <View style={tw`bg-white rounded-3xl p-16 items-center border border-gray-300 shadow-lg`}>
               <Text style={tw`text-7xl mb-6`}>📍</Text>
               <Text style={tw`text-2xl font-bold mb-3 text-gray-900`}>No benches yet</Text>
               <Text style={tw`text-gray-600 text-center mb-8 text-lg`}>
@@ -586,7 +586,7 @@ export default function Benches() {
               </Text>
               {isAdmin && (
                 <TouchableOpacity
-                  style={tw`bg-blue-700 px-6 py-4 rounded-2xl flex-row items-center gap-2 border border-blue-800 active:opacity-90`}
+                  style={tw`bg-blue-700 px-6 py-4 rounded-2xl flex-row items-center gap-2 shadow-lg active:opacity-90`}
                   onPress={handleNewBench}
                 >
                   <Text style={tw`text-white font-bold text-xl`}>+</Text>
@@ -601,7 +601,7 @@ export default function Benches() {
               {benches.map((item) => (
                 <View
                   key={item._id}
-                  style={tw`bg-white rounded-3xl p-7 border border-gray-300 shadow-sm`}
+                  style={tw`bg-white rounded-3xl p-7 border border-gray-300 shadow-lg`}
                 >
                   <View style={tw`flex-row justify-between items-start mb-4`}>
                     <View style={tw`flex-1`}>
@@ -638,24 +638,30 @@ export default function Benches() {
                     const benchReservations = getBenchReservationsForDate(item._id, dateStr);
                     return benchReservations.length > 0 ? (
                       <View style={tw`mb-4`}>
-                        {benchReservations.map((r) => (
-                          <View key={r._id} style={tw`mt-3`}>
-                            <Text style={tw`text-red-700 text-base font-semibold`}>
-                              🔴 Ocupată {r.startTime} – {r.endTime}
-                            </Text>
-                            {r.userName && (
-                              <View style={tw`flex-row items-center gap-2 mt-1.5 ml-1`}>
-                                <Text style={tw`text-gray-600 text-sm`}>👤</Text>
-                                <Text style={tw`text-sm text-gray-800 font-medium`}>
-                                  {r.userName}
-                                  {isAdmin && r.userEmail && (
-                                    <Text style={tw`text-gray-600`}> ({r.userEmail})</Text>
-                                  )}
+                        {benchReservations.map((r) => {
+                          const isMyReservation = r.userId === user?._id;
+                          return (
+                            <View key={r._id} style={tw`mt-3`}>
+                              <View style={tw`flex-row items-center gap-2 flex-wrap`}>
+                                <View style={tw`w-3 h-3 rounded-full ${isMyReservation ? "bg-amber-500" : "bg-red-500"}`} />
+                                <Text style={tw`${isMyReservation ? "text-amber-700" : "text-red-700"} text-base font-semibold`}>
+                                  {isMyReservation ? "Your reservation" : "Ocupată"} {r.startTime} – {r.endTime}
                                 </Text>
+                                {r.userName && (
+                                  <>
+                                    <Text style={tw`text-gray-500`}>•</Text>
+                                    <Text style={tw`text-sm text-gray-700 font-medium`}>
+                                      {r.userName}
+                                      {isAdmin && r.userEmail && (
+                                        <Text style={tw`text-gray-600`}> ({r.userEmail})</Text>
+                                      )}
+                                    </Text>
+                                  </>
+                                )}
                               </View>
-                            )}
-                          </View>
-                        ))}
+                            </View>
+                          );
+                        })}
                       </View>
                     ) : (
                       <Text style={tw`text-emerald-700 text-base font-semibold mt-1 mb-4`}>
@@ -668,14 +674,14 @@ export default function Benches() {
                   {isAdmin ? (
                     <View style={tw`flex-row gap-3 pt-2`}>
                       <TouchableOpacity
-                        style={tw`flex-1 bg-blue-600 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 border border-blue-700 active:opacity-90`}
+                        style={tw`flex-1 bg-blue-600 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:opacity-90`}
                         onPress={() => handleEdit(item)}
                       >
                         <Text style={tw`text-white font-semibold text-base`}>✏️</Text>
                         <Text style={tw`text-white font-semibold text-base`}>Edit</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={tw`flex-1 bg-red-600 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 border border-red-700 active:opacity-90`}
+                        style={tw`flex-1 bg-red-600 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:opacity-90`}
                         onPress={() => handleDelete(item._id)}
                       >
                         <Text style={tw`text-white font-semibold text-base`}>🗑️</Text>
@@ -684,7 +690,7 @@ export default function Benches() {
                     </View>
                   ) : (
                     <TouchableOpacity
-                      style={tw`w-full bg-blue-700 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 border border-blue-800 active:opacity-90`}
+                      style={tw`w-full bg-blue-700 px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:opacity-90`}
                       onPress={() => goToScreen("Reservations")}
                     >
                       <Text style={tw`text-white text-base`}>📅</Text>

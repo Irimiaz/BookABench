@@ -1,11 +1,44 @@
 import type { Db, Collection, Document } from "mongodb";
 import { connectToDatabase } from "../services/mongodb.js";
+import { ValidationError } from "../utils/errors.js";
 
 export class BaseCollection {
   protected collectionName: string;
   protected db: Db | undefined;
 
   constructor(collectionName: string) {
+    // Validate collection name
+    if (!collectionName || typeof collectionName !== "string") {
+      throw new ValidationError("Collection name is required and must be a string");
+    }
+
+    // Trim whitespace
+    collectionName = collectionName.trim();
+
+    // MongoDB collection name validation rules
+    if (collectionName.length === 0) {
+      throw new ValidationError("Collection name cannot be empty");
+    }
+
+    // MongoDB collection names cannot contain certain characters
+    // and cannot start with certain prefixes
+    if (collectionName.includes("$")) {
+      throw new ValidationError("Collection name cannot contain '$' character");
+    }
+
+    if (collectionName.includes("\0")) {
+      throw new ValidationError("Collection name cannot contain null character");
+    }
+
+    if (collectionName.startsWith("system.")) {
+      throw new ValidationError("Collection name cannot start with 'system.'");
+    }
+
+    // MongoDB has a limit on collection name length (typically 120 bytes for UTF-8)
+    if (collectionName.length > 120) {
+      throw new ValidationError("Collection name is too long (max 120 characters)");
+    }
+
     this.collectionName = collectionName;
   }
 

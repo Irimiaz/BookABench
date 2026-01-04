@@ -95,12 +95,12 @@ export default function Dashboard() {
   const [universityName, setUniversityName] = useState("");
   const [teacherID, setTeacherID] = useState("");
 
-  // Collection name for subscription
-  const [collectionName, setCollectionName] = useState("");
-
   // Password visibility
   const [showPassword, setShowPassword] = useState(false);
   const [showTeacherID, setShowTeacherID] = useState(false);
+
+  // Collection name for subscription
+  const [collectionName, setCollectionName] = useState("");
 
   useEffect(() => {
     fadeAnim.setValue(0);
@@ -212,7 +212,7 @@ export default function Dashboard() {
             ]}
           >
             {/* Main Card */}
-            <View style={styles.card}>
+            <View style={[styles.card, tw`shadow-lg`]}>
               {/* Toggle Tabs */}
               <View style={tw`flex-row mb-6 bg-gray-100 rounded-xl p-1`}>
                 <TouchableOpacity
@@ -254,7 +254,7 @@ export default function Dashboard() {
               {/* Error Message */}
               {error ? (
                 <View
-                  style={tw`bg-red-100 border-2 border-red-400 rounded-xl p-4 mb-4 flex-row items-center`}
+                  style={tw`bg-red-100 border-2 border-red-400 rounded-xl p-4 mb-4 flex-row items-center shadow-sm`}
                 >
                   <Ionicons name="alert-circle" size={20} color="#dc2626" />
                   <Text style={tw`text-red-700 ml-2 flex-1 font-medium`}>{error}</Text>
@@ -326,15 +326,6 @@ export default function Dashboard() {
                 secureTextEntry={!showPassword}
                 showPasswordToggle={true}
                 onTogglePassword={() => setShowPassword(!showPassword)}
-              />
-
-              {/* Collection Name Input */}
-              <InputField
-                icon={{ type: MaterialCommunityIcons, name: "database-outline" }}
-                placeholder="Collection name (e.g., products)"
-                value={collectionName}
-                onChangeText={setCollectionName}
-                autoCapitalize="none"
               />
 
               {/* Submit Button */}

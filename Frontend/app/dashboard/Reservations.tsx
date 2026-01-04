@@ -119,7 +119,39 @@ export default function Reservations() {
       const allReservationsData = await getData<Reservation>("reservations", {
         status: "active",
       });
-      setAllReservations(allReservationsData || []);
+      
+      // Enrich reservations with user information
+      const userIds = [...new Set(allReservationsData.map((res) => res.userId))];
+      const usersData = await Promise.all(
+        userIds.map(async (userId) => {
+          try {
+            const users = await getData<any>("users", { _id: userId });
+            return users.length > 0 ? users[0] : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      
+      // Create a map of userId to user data
+      const userMap = new Map();
+      userIds.forEach((userId, index) => {
+        if (usersData[index]) {
+          userMap.set(userId, usersData[index]);
+        }
+      });
+      
+      // Enrich reservations with user information
+      const enriched = allReservationsData.map((res) => {
+        const userData = userMap.get(res.userId);
+        return {
+          ...res,
+          userName: userData?.name || "Unknown User",
+          userEmail: userData?.email || "",
+        };
+      });
+      
+      setAllReservations(enriched || []);
     } catch (error: any) {
       console.error("Failed to fetch all reservations:", error);
     }
@@ -792,14 +824,22 @@ export default function Reservations() {
                               {occupiedSlots.slice(0, 2).map((r) => {
                                 const isMyReservation = r.userId === user?._id && r._id !== editingId;
                                 return (
-                                  <View key={r._id} style={tw`flex-row items-center gap-2`}>
+                                  <View key={r._id} style={tw`flex-row items-center gap-2 flex-wrap`}>
                                     <View style={tw`w-2 h-2 rounded-full ${isMyReservation ? "bg-amber-500" : "bg-red-500"}`} />
                                     <Text
                                       style={tw`${isMyReservation ? "text-amber-700" : "text-red-700"} text-xs font-medium`}
                                       numberOfLines={1}
                                     >
-                                      {r.startTime}–{r.endTime}
+                                      {isMyReservation ? "Your reservation" : "Ocupată"} {r.startTime}–{r.endTime}
                                     </Text>
+                                    {r.userName && (
+                                      <>
+                                        <Text style={tw`text-gray-400 text-xs`}>•</Text>
+                                        <Text style={tw`text-xs text-gray-600 font-medium`} numberOfLines={1}>
+                                          {r.userName}
+                                        </Text>
+                                      </>
+                                    )}
                                   </View>
                                 );
                               })}
