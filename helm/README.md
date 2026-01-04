@@ -41,7 +41,7 @@ kind load docker-image bookabench-database:dev --name bookabench
 ### 3) Install Helm chart
 
 ```bash
-helm upgrade --install bookabench ./helm/bookabench -n bookabench --create-namespace
+helm upgrade --install bookabench bookabench/ -n bookabench --create-namespace
 ```
 
 ### 4) Check status
