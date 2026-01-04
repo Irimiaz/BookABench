@@ -8,17 +8,14 @@ type TitleSubtitleProps = {
 };
 const TitleSubtitle: React.FC<TitleSubtitleProps> = ({ title, subtitle }) => {
   return (
-    <View style={tw`mt-6 `}>
+    <View style={tw`mt-4 mb-8`}>
       {/* Title */}
-      <Text style={tw`text-center text-black text-3xl  `}>{title}</Text>
-      {/* Spacing and Subtitle */}
+      <Text style={tw`text-center text-5xl font-bold tracking-tight text-gray-900 mb-3`}>{title}</Text>
+      {/* Subtitle */}
       {subtitle && (
-        <>
-          <View style={tw`h-5`} />
-          <Text style={tw`text-center text-black text-base font-normal `}>
-            {subtitle}
-          </Text>
-        </>
+        <Text style={tw`text-center text-gray-600 text-lg`}>
+          {subtitle}
+        </Text>
       )}
     </View>
   );
