@@ -3,6 +3,7 @@ import { SplashScreen } from "expo-router";
 import { View, Text, StyleSheet } from "react-native";
 import BlankBackground from "../components/BlankBackground";
 import Stacks from "./navigation/Stacks";
+import { AuthProvider } from "../contexts/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,11 +28,13 @@ export default function App() {
   return (
     <>
       {/* <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}> */}
-      <BlankBackground>
-        <>
-          <Stacks />
-        </>
-      </BlankBackground>
+      <AuthProvider>
+        <BlankBackground>
+          <>
+            <Stacks />
+          </>
+        </BlankBackground>
+      </AuthProvider>
       {/* </ThemeProvider> */}
     </>
   );

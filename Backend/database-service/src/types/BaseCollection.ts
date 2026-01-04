@@ -16,10 +16,19 @@ export class BaseCollection {
     return this.db.collection(this.collectionName);
   }
 
+  /**
+   * Normalize query:
+   * - UUID v4 strings are kept as strings (not converted to ObjectId)
+   */
+  protected normalizeQuery(query: any) {
+    // Return query as-is since we use UUID v4 strings, not ObjectId
+    return query;
+  }
+
   async find(query: any = {}) {
     try {
       const collection = await this.getCollection();
-      return collection.find(query).toArray();
+      return collection.find(this.normalizeQuery(query)).toArray();
     } catch (error) {
       console.error(
         `Error in find operation for ${this.collectionName}:`,
@@ -32,7 +41,7 @@ export class BaseCollection {
   async findOne(query: any) {
     try {
       const collection = await this.getCollection();
-      return collection.findOne(query);
+      return collection.findOne(this.normalizeQuery(query));
     } catch (error) {
       console.error(
         `Error in findOne operation for ${this.collectionName}:`,
@@ -58,7 +67,10 @@ export class BaseCollection {
   async updateOne(query: any, update: any) {
     try {
       const collection = await this.getCollection();
-      return collection.updateOne(query, { $set: update });
+      return collection.updateOne(
+        this.normalizeQuery(query),
+        { $set: update }
+      );
     } catch (error) {
       console.error(
         `Error in updateOne operation for ${this.collectionName}:`,
@@ -71,7 +83,7 @@ export class BaseCollection {
   async deleteOne(query: any) {
     try {
       const collection = await this.getCollection();
-      return collection.deleteOne(query);
+      return collection.deleteOne(this.normalizeQuery(query));
     } catch (error) {
       console.error(
         `Error in deleteOne operation for ${this.collectionName}:`,
@@ -84,7 +96,7 @@ export class BaseCollection {
   async count(query: any = {}) {
     try {
       const collection = await this.getCollection();
-      return collection.countDocuments(query);
+      return collection.countDocuments(this.normalizeQuery(query));
     } catch (error) {
       console.error(
         `Error in count operation for ${this.collectionName}:`,
