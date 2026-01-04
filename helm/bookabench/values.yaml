@@ -1,0 +1,40 @@
+imagePullPolicy: IfNotPresent
+
+mongodb:
+  image: mongo
+  tag: "7"
+  username: root
+  password: rootpass123
+  storage: 2Gi
+  serviceType: NodePort
+  nodePort: 32017
+
+secrets:
+  mongodbUri: "mongodb://root:rootpass123@mongodb:27017/?authSource=admin"
+
+databaseService:
+  image: bookabench-database
+  tag: dev
+  replicas: 1
+  port: 3001
+  nodePort: 32001
+  nodeEnv: development
+  dbName: data
+
+authService:
+  image: bookabench-auth
+  tag: dev
+  replicas: 1
+  port: 3000
+  nodePort: 32000
+  nodeEnv: development
+  adminId: sef
+
+businessService:
+  image: bookabench-business
+  tag: dev
+  replicas: 1
+  port: 3002
+  nodePort: 32002
+  nodeEnv: development
+  frontendUrl: "http://localhost:8081"
