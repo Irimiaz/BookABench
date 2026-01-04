@@ -75,14 +75,23 @@ export async function setData<T = any>(
   query: any,
   update?: any
 ): Promise<T> {
+  console.log("[setData] Called with:", { collection, query, update });
   const params: any = { query };
   if (update && Object.keys(update).length > 0) {
     params.update = update;
   }
-  return apiClient.request<T>("SET_DATA", "database", {
-    collection,
-    params,
-  });
+  console.log("[setData] Making API request with params:", params);
+  try {
+    const result = await apiClient.request<T>("SET_DATA", "database", {
+      collection,
+      params,
+    });
+    console.log("[setData] API request successful, result:", result);
+    return result;
+  } catch (error) {
+    console.error("[setData] API request failed:", error);
+    throw error;
+  }
 }
 
 /**
